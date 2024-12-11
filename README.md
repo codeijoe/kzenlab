@@ -96,4 +96,15 @@ When a mentee join the mentorship, no matter the have they own laptop or not but
 ## Build with VBOX
 cmake -S . -B build
 
+
 ## Build with QEMU
+
+
+## Debian Installing
+
+
+Steps:
+1. Make Partition and formats
+2. install xfsprogs if want to use xfs filesystem
+3. mount /boot/efi
+4. install dbootstrap

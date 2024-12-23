@@ -36,6 +36,8 @@ _iso_home=default
 _vm_name=default 
 _vm_domain=default
 _vm_hostname=default
+_hyper_type=default
+_vm_disk_size=default
 
 ##### KZENLAB Functions #####
 
@@ -49,9 +51,11 @@ function import_env() {
     _vbox_home=$(grep -F -- "VBOX_HOME" .env | cut -d'=' -f2)
     _vbox_vm_home=$(grep -F -- "VBOX_VM_HOME" .env | cut -d'=' -f2)
     _vbox_disk_home=$(grep -F -- "VBOX_DISK_HOME" .env | cut -d'=' -f2)
+    _vm_hyper_type=$(grep -F -- "VM_HYPER_TYPE" .env | cut -d'=' -f2)
     _vm_name=$(grep -F -- "VM_NAME" .env | cut -d'=' -f2)
     _vm_hostname=$(grep -F -- "VM_HOSTNAME" .env | cut -d'=' -f2)
     _vm_domain=$(grep -F -- "VM_DOMAIN" .env | cut -d'=' -f2)
+    _vm_disk_size=$(grep -F -- "VM_DISK_SIZE" .env | cut -d'=' -f2)
 }
 
 
@@ -60,33 +64,72 @@ function import_env() {
 # OUTS: None
 # RETS: None
 function setup_cmake(){
-	cmake --build build --target clean_build &&
+    if ! [[ -d build/log ]]; then
+		mkdir -p build/log
+    fi
 	cmake -S . -B build \
 -DISO_HOME=$_iso_home \
 -DVBOX_HOME=$_vbox_home \
 -DVBOX_DISK_HOME=$_vbox_disk_home \
 -DVBOX_VM_HOME=$_vbox_vm_home \
+-DVM_HYPER_TYPE=$_vm_hyper_type \
+-DVM_DISK_SIZE=$_vm_disk_size \
 -DVM_NAME=$_vm_name \
 -DVM_HOSTNAME=$_vm_hostname \
 -DVM_DOMAIN=$_vm_domain
+	cmake --build build --target check_tools
+	cmake --build build --target print_vm_env
+	cmake --build build --target write_vm_env
 }
 
-
-# DESC: Build empty VBOX VM 4GB
+# DESC: Clean CMAKE
 # ARGS: None
 # OUTS: None
 # RETS: None
-function build_empty_vbox_4gb(){
-	cmake --build build --target build_empty_vbox_4gb
+function clean_cmake(){
+	cmake --build build --target clean_cmake
 }
 
-# DESC: Demolish empty VBOX VM 4GB
+# DESC: Build empty virtual disk
 # ARGS: None
 # OUTS: None
 # RETS: None
-function demolish_empty_vbox_4gb(){
-	cmake --build build --target demolish_empty_vbox_4gb				
-} 
+function create_raw_disk(){
+    cmake --build build --target create_raw_disk && \
+    cmake --build build --target mounting_raw_disk
+}
+
+# DESC: Demolish empty virtual disk
+# ARGS: None
+# OUTS: None
+# RETS: None
+function demolish_disk(){
+	cmake --build build --target demolish_empty_vbox_4gb
+}
+
+
+# DESC: Setup partition for virtual disk
+# ARGS: None
+# OUTS: None
+# RETS: None
+function build_partition(){
+    case $_hyper_type in
+    	"VBOX")
+			# cmake --build build --target build_empty_vbox_${_vm_disk_size}gb
+			# cmake --build build --target check_tools
+			setup_cmake
+			part_setup
+		;;
+    	"QEMU")
+			echo -n "QEMU matched"
+		;;
+	esac
+}
+
+function part_setup(){
+	cmake --build build --target check_tools
+	cmake --build build --target partition_setup
+}
 
 function check_qemu(){
 	echo -e "-- Checking QEMU Path ${QEMU_PATH}"
@@ -106,14 +149,14 @@ DEBUG=[yes/no] [shell] setup.sh [options]
 Usage:
      -h|--help                  Displays this help
      -v|--verbose               Displays verbose output
-     -g|--build-vbox4gb         Build VBOX VM 4GB
-     -h|--build-vbox8gb         Build VBOX VM 8GB
-     -i|--build-vbox16gb        Build VBOX VM 16GB
-     -j|--build-vbox32gb        Build VBOX VM 32GB
-     -g|--build-vbox64gb        Build VBOX VM 64GB
+     -cl|--clean-cmake          Clean CMAKE
+     -sc|--setup-cmake          Clean CMAKE
+     -br|--build-raw        	Build RAW IMAGE
 
 example:
-> DEBUG=no bash setup.sh --build-vbox4gb
+> DEBUG=no bash setup.sh --setup-cmake
+or
+> DEBUG=yes bash setup.sh -sc
 
 EOF
 }
@@ -272,18 +315,24 @@ function parse_params() {
             -v | --verbose)
                 verbose=true
                 ;;
-            -gb | --build-vbox4gb)
-                if [[ $args -eq 0 ]]; then
-                	setup_cmake
-                    build_empty_vbox_4gb
-                else
-                	setup_cmake
-                    build_empty_vbox_4gb $args
-                fi
+            -cl | --clean)
+				clean_cmake
                 ;;
-            -gd | --demolish-vbox4gb)
+            -sc | --setup)
+				setup_cmake
+                ;;
+            -br | --build-raw)
+					create_raw_disk
+				;;
+            --build-by-config)
+					build_empty_disk
+				;;
+            --build-partition)
+					build_partition
+				;;
+            --demolish-disk)
                 if [[ $args -eq 0 ]]; then
-                    demolish_empty_vbox_4gb
+                    demolish_disk
                 else
                     demolish_empty_vbox_4gb $args
                 fi

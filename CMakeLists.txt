@@ -254,12 +254,6 @@ add_custom_target(
 )
 
 add_custom_target(
-    install_debian_base
-    COMMAND cat log/root | xargs -I {} sudo debootstrap --arch amd64 bookworm {} http://ftp.uk.debian.org/debian
-    COMMENT "Installing Debian Bookworm with salt-minion base to root partition..."
-)
-
-add_custom_target(
     unloop_raw_disk
     COMMAND ${LOSETUP_PATH} --raw | grep ${VM_NAME}.raw | cut -f 1 -d " " | xargs -I {} ${LOSETUP_PATH} -d {}
     COMMENT "Unlooping..."
@@ -271,11 +265,23 @@ add_custom_target(
     COMMENT "Removing RAW Image..."
 )
 
+add_custom_target(
+    download_debian9
+    # Debian 9 Stretch
+    COMMAND sudo rm -rf /tmp/debian-9 && sudo debootstrap --arch amd64 --include=curl,git,zsh,gdisk stretch /tmp/debian-9 http://archive.debian.org/debian && sudo tar -czf debian-9.tar.gz -C /tmp debian-9
+    COMMENT "Downloading DEBIAN 9 Stretch..."
+)
 
 add_custom_target(
-    download_stretch
-    COMMAND sudo debootstrap --arch amd64 --include=curl,git,zsh,gdisk stretch /tmp/debian-9 http://archive.debian.org/debian && sudo tar -czf debian-9.tar.gz -C /tmp debian-9
-    COMMENT "Downloading DEBIAN 9 Stretch..."
+    unpack_debian9
+    COMMAND cat log/root | xargs -I {} sudo tar --strip-components=1 -xzvf ${CMAKE_BINARY_DIR}/debian-9.tar.gz -C {} 
+    COMMENT "${CMAKE_BINARY_DIR} >> Unpack DEBIAN 9 Stretch to raw disk..."
+)
+
+add_custom_target(
+    chroot_debian9
+    COMMAND cat log/root | xargs -I {} sudo cp ../base-os/base-os.sh {}/root && cat log/root | xargs -I {} sudo chroot {} cat /etc/os-release
+    COMMENT "`chroot` to Debian 9 Stretch in raw disk..."
 )
 
 #=========================================
@@ -436,7 +442,6 @@ add_custom_command(
 )
 
 ########## VBOX TARGET ##########
-
 add_custom_target(
     build_empty_vbox_4gb
     COMMAND ${VBOX_CMD} storageattach ${VM_NAME} --storagectl "SATA01" --port 1 --device 0 --type hdd --medium ${VBOX_DISK_HOME}/${VM_NAME}.vdi

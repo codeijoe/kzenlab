@@ -96,8 +96,25 @@ function clean_cmake(){
 # RETS: None
 function create_raw_disk(){
     cmake --build build --target create_raw_disk && \
-    cmake --build build --target mounting_raw_disk
+    cmake --build build --target mounting_raw_disk && \
+    download_debian9 && \
+    unpack_debian9 && \
+	cmake --build build --target chroot_debian9	
+
 }
+
+function download_debian9(){
+	cmake --build build --target download_debian9	
+}
+
+function unpack_debian9(){
+	cmake --build build --target unpack_debian9
+}
+
+function build_debian9(){
+	cmake --build build --target build-base-os
+}
+
 
 # DESC: Demolish empty virtual disk
 # ARGS: None
@@ -152,6 +169,9 @@ Usage:
      -cl|--clean-cmake          Clean CMAKE
      -sc|--setup-cmake          Clean CMAKE
      -br|--build-raw        	Build RAW IMAGE
+     -d9|--download-debian9     Download Debian 9   
+     -ud9|--unpack-debian9      Unpack Debian 9   
+     -db9|--build-debian9  		Build Debian 9
 
 example:
 > DEBUG=no bash setup.sh --setup-cmake
@@ -323,6 +343,15 @@ function parse_params() {
                 ;;
             -br | --build-raw)
 					create_raw_disk
+				;;
+	   	    -d9|--download-debian9)
+					download_debian9
+				;;
+		    -ud9|--unpack-debian9)
+					unpack_debian9
+				;;
+	        -db9|--build-debian9)
+					build_debian9
 				;;
             --build-by-config)
 					build_empty_disk

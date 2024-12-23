@@ -280,7 +280,7 @@ add_custom_target(
 
 add_custom_target(
     chroot_debian9
-    COMMAND cat log/root | xargs -I {} sudo cp ../base-os/base-os.sh {}/root && cat log/root | xargs -I {} sudo chroot {} cat /etc/os-release
+    COMMAND cat log/root | xargs -I {} sudo chroot {} cat /etc/os-release
     COMMENT "`chroot` to Debian 9 Stretch in raw disk..."
 )
 

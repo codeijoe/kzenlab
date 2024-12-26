@@ -18,8 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 ######################################
 cmake_minimum_required(VERSION 3.15)
-project(BaseBuild)
-
+project(kzenlab)
 
 ######################################
 ## Shell Environment variables as CMake cache variables
@@ -33,13 +32,12 @@ set(QEMU_PATH "/usr/bin/qemu-system-x86_64" CACHE STRING "Path to VBoxManage exe
 set(GDISK_PATH "/usr/sbin/gdisk" CACHE STRING "Path to GDISK executable")
 set(FDISK_PATH "/usr/sbin/fdisk" CACHE STRING "Path to FDISK executable")
 set(DEBOOT_PATH "/usr/sbin/debootstrap" CACHE STRING "Path to DEBOOTSTRAP executable")
-set(FALLO_PATH "/usr/bin/fallocate" CACHE STRING "Path to Fallocate executable")
+set(FALLO_PATH "/usr/bin/fallocate" CACHE INTERNAL "Path to Fallocate executable")
 set(PARTED_PATH "/usr/sbin/parted" CACHE STRING "Path to Parted executable")
 set(UDISKCTL_PATH "/usr/bin/udisksctl" CACHE STRING "Path to UDISKCTL executable")
 set(MKFS_PATH "/usr/sbin/mkfs" CACHE STRING "Path to MKFS executable")
 set(MKSWAP_PATH "/usr/sbin/mkswap" CACHE STRING "Path to MKSWAP executable")
 set(LOSETUP_PATH "/usr/sbin/losetup" CACHE STRING "Path to Losetup executable")
-
 
 #### VM
 set(VM_HYPER_TYPE "VBOX" CACHE STRING "VM Hypervisor type")
@@ -79,14 +77,27 @@ set(VBOX_DISK_16GB "${VM_NAME}--16GB.vdi" CACHE STRING "16GB Disk")
 set(VBOX_DISK_32GB "${VM_NAME}--32GB.vdi" CACHE STRING "32GB Disk")
 set(VBOX_DISK_64GB "${VM_NAME}--64GB.vdi" CACHE STRING "64GB Disk")
 
-
 #### DEBIAN
 set(EFI_PART "default" CACHE STRING "EFI Partition")
-set(ROOT_PART "default" CACHE STRING "EFI Partition")
+set(ROOT_PART "default" CACHE STRING "ROOT Partition")
 
+#=========================================
 
 ######################################
-# TGET: print_vm_env
+## Adding Stages 
+######################################
+
+#### Raw Disk Stage
+add_subdirectory(raw-disk)
+
+#### Base OS Stage
+#add_subdirectory(base-os)
+
+
+########## TARGET ############
+
+######################################
+# TARG: print_vm_env
 # PROC: init/env
 # DESC: Print Virtual Machine Environment to screen
 ######################################
@@ -119,7 +130,7 @@ add_custom_target(
 )
 
 ######################################
-# TGET: write_vm_env
+# TARG: write_vm_env
 # PROC: init/env
 # DESC: Print Virtual Machine Environment to vm_env.sh
 ######################################
@@ -157,9 +168,6 @@ add_custom_target(
 ######################################
 ## CHECK REQUIRMENT TOOLS
 ######################################
-
-
-
 
 add_custom_target(
     check_tools
@@ -211,105 +219,8 @@ add_custom_target(
 
 #=========================================
 
-##### BUILD RAW TARGET #####
-
-add_custom_target(
-    create_raw_disk
-    DEPENDS ${VM_NAME}.raw
-    COMMENT "Create RAW Disk 2GB with EFI, Swap and Root Partition"
-)
-
-add_custom_target(
-    formating_raw_disk
-    ## Formating EFI
-    COMMAND cat log/loops | xargs -I {} mkfs -t vfat -F 32 -n EFI {}p1 
-    ## Formating SWAP
-    COMMAND cat log/loops | xargs -I {} mkswap -L swap {}p3 
-    ## Formating ROOT
-    COMMAND cat log/loops | xargs -I {} mkfs -t ext4 -L root -E root_owner=1000:1000 {}p3 
-    #COMMAND cat log/loops | xargs -I {} echo {}
-    COMMAND cat log/loops | xargs -I {} fdisk -l {}
-    DEPENDS log/loops
-    COMMENT "Formating RAW Disk..."
-)
-
-add_custom_target(
-    mounting_raw_disk
-    # EFI Partition
-    #COMMAND cat log/loops | xargs -I {} ${UDISKCTL_PATH} mount -b {}p1 --filesystem-type=auto --options="rw" | cut -f 4 -d " " > log/efi
-    # Root Partition
-    COMMAND cat log/loops | xargs -I {} ${UDISKCTL_PATH} mount -b {}p3 --filesystem-type=auto | cut -f 4 -d " " > log/root && cat log/loops | xargs -I {} sudo mount -o remount,exec {}p3 /media/ijoe/root
-    #COMMAND cat log/loops | xargs -I {} sudo mount -o exec,dev {}p3 /media/ijoe/root
-    DEPENDS formating_raw_disk
-    COMMENT "Mounting..."
-)
-
-add_custom_target(
-    unmounting_raw_disk
-    # EFI Partition
-    COMMAND ${LOSETUP_PATH} --raw | grep ${VM_NAME}.raw | cut -f 1 -d " " | xargs -I {} ${UDISKCTL_PATH} unmount -b {}p3 
-    # ROOT Partition
-    COMMAND ${LOSETUP_PATH} --raw | grep ${VM_NAME}.raw | cut -f 1 -d " " | xargs -I {} ${UDISKCTL_PATH} unmount -b {}p3 
-    COMMENT "Unmounting..."
-)
-
-add_custom_target(
-    unloop_raw_disk
-    COMMAND ${LOSETUP_PATH} --raw | grep ${VM_NAME}.raw | cut -f 1 -d " " | xargs -I {} ${LOSETUP_PATH} -d {}
-    COMMENT "Unlooping..."
-)
-
-add_custom_target(
-    delete_raw_disk
-    COMMAND ${CMAKE_COMMAND} -E rm -rf ${VM_NAME}.raw
-    COMMENT "Removing RAW Image..."
-)
-
-add_custom_target(
-    download_debian9
-    # Debian 9 Stretch
-    COMMAND sudo rm -rf /tmp/debian-9 && sudo debootstrap --arch amd64 --include=curl,git,zsh,gdisk stretch /tmp/debian-9 http://archive.debian.org/debian && sudo tar -czf debian-9.tar.gz -C /tmp debian-9
-    COMMENT "Downloading DEBIAN 9 Stretch..."
-)
-
-add_custom_target(
-    unpack_debian9
-    COMMAND cat log/root | xargs -I {} sudo tar --strip-components=1 -xzvf ${CMAKE_BINARY_DIR}/debian-9.tar.gz -C {} 
-    COMMENT "${CMAKE_BINARY_DIR} >> Unpack DEBIAN 9 Stretch to raw disk..."
-)
-
-add_custom_target(
-    chroot_debian9
-    COMMAND cat log/root | xargs -I {} sudo chroot {} cat /etc/os-release
-    COMMENT "`chroot` to Debian 9 Stretch in raw disk..."
-)
-
-#=========================================
-
-
-
 ########## COMMAND ############
 
-########## RAW BUILD ##########
-add_custom_command(
-    OUTPUT ${VM_NAME}.raw
-    COMMAND ${FALLO_PATH} -l 2GiB ${VM_NAME}.raw 
-    COMMAND ${PARTED_PATH} -s -a optimal ${VM_NAME}.raw mklabel gpt mkpart primary fat32 1MiB 270MiB name 1 uefi mkpart primary linux-swap 270MiB 500MiB name 2 swap mkpart primary ext4 500MiB 2000MiB name 3 root set 1 esp on
-    COMMENT "${VM_NAME} Create 2 GB RAW disk then create partition..."
-    VERBATIM
-)
-
-######################################
-# COMD: log/loops
-# PROC: init/disk
-# DESC: Checking `debootstrap` availability
-######################################
-add_custom_command(
-    OUTPUT log/loops
-    COMMAND ${UDISKCTL_PATH} loop-setup -f ${VM_NAME}.raw | head -c -2 | cut -f 5 -d " " > log/loops
-    COMMENT "Create loop device for ${VM_NAME}.raw..."
-    VERBATIM
-)
 
 ######################################
 # COMD: log/deboot
@@ -464,12 +375,6 @@ add_custom_target(
          COMMAND ${VBOX_CMD} showvminfo ${VM_NAME}
     ENDIF()
     COMMENT "Show information of VBOX 4GB Virtual Machine"
-)
-
-#### Remove Virtual Machine
-add_custom_target(
-    remove_vbox_vm
-    COMMENT "WARNING!!! Do It Manually"
 )
 
 ########## VBOX COMMAND ##########

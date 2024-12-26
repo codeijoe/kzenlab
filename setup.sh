@@ -96,11 +96,12 @@ function clean_cmake(){
 # RETS: None
 function create_raw_disk(){
     cmake --build build --target create_raw_disk && \
-    cmake --build build --target mounting_raw_disk && \
-    download_debian9 && \
+    cmake --build build --target mounting_raw_disk
+}
+
+function setup_base_os(){
     unpack_debian9 && \
 	cmake --build build --target chroot_debian9	
-
 }
 
 function download_debian9(){
@@ -113,6 +114,19 @@ function unpack_debian9(){
 
 function build_debian9(){
 	cmake --build build --target build-base-os
+}
+
+function remounting(){
+	if [ -f build/log/loops ] ; then
+    	rm build/log/loops
+	fi
+	if [ -f build/log/loops ] ; then
+    	rm build/log/root
+	fi
+	if [ -f build/log/loops ] ; then
+    	rm build/log/efi
+	fi
+	cmake --build build --target make_loops_mounted
 }
 
 
@@ -352,6 +366,12 @@ function parse_params() {
 				;;
 	        -db9|--build-debian9)
 					build_debian9
+				;;
+			-rem|--remounting)
+					remounting
+				;;
+            --setup-baseos)
+					setup_base_os
 				;;
             --build-by-config)
 					build_empty_disk

@@ -97,6 +97,7 @@ sudo grub-install --boot-directory=/mnt/boot --uefi-secure-boot /dev/sda
 grub-install --target=x86_64-efi /dev/loop31 --bootloader-id=GRUB --modules="tpm" --efi-directory=/media/ijoe/EFI/ --boot-directory=/media/ijoe/root/boot --uefi-secure-boot --removable
 
 
+=== LOOP DEVICE Common Issues and Fixes
 
 -- Loop Device chown issue to permission
 `sudo chmod 666 /dev/loop31` 
@@ -106,8 +107,22 @@ Disable the Use Host I/O Cache
 
 -- Create VMDK image right way
 ```
-VBoxManage internalcommands createrawvmdk -filename /path/to/rawdisk.vmdk -rawdisk /dev/loop31
+vboxmanage internalcommands createrawvmdk -filename build/$VM_NAME.vmdk -rawdisk /dev/loop32
+
+
 ```
+
+
+qemu-system-x86_64 \ 
+  -drive file=.iso,media=cdrom \
+  -drive file=build/KZENLAB_BASE_OS_2GB.raw,format=raw,if=virtio \
+  -enable-kvm \                       
+  -bios /usr/share/OVMF/OVMF_CODE.fd \
+  -boot menu=on
+
+qemu-system-x86_64 -drive file=build/KZENLAB_BASE_OS_2GB.raw,format=raw,if=virtio -enable-kvm -bios /usr/share/OVMF/OVMF_CODE.fd -boot menu=on
+
+
 
 --- Kernel SYNC
 `sync`

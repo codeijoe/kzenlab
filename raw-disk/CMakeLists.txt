@@ -27,9 +27,15 @@ set(LOG_LOOPS "${CMAKE_BINARY_DIR}/log/loops" CACHE INTERNAL "Loop Device")
 set(LOG_ROOT "${CMAKE_BINARY_DIR}/log/root" CACHE INTERNAL "ROOT mount path")
 set(LOG_EFI "${CMAKE_BINARY_DIR}/log/efi" CACHE INTERNAL "EFI mount path")
 
-set(CHROOT_DIR "${LOG_ROOT}" CACHE INTERNAL "CHROOT mount path")
-set(DVD_MOUNT "${LOG_ROOT}" CACHE INTERNAL "DVD mount path")
+set(PATH_ROOT "`cat ${LOG_ROOT}`" CACHE INTERNAL "ROOT mount path")
 
+set(DEV_LOOPS "`cat ${LOG_LOOPS}`" CACHE INTERNAL "Loop Device")
+
+
+set(LOG_LINUX_PROC "${CMAKE_BINARY_DIR}/log/linux-proc" CACHE INTERNAL "/proc mount path")
+set(LOG_LINUX_SYS "${CMAKE_BINARY_DIR}/log/linux-sys" CACHE INTERNAL "/sys mount path")
+set(LOG_LINUX_DEV "${CMAKE_BINARY_DIR}/log/linux-dev" CACHE INTERNAL "/dev mount path")
+set(LOG_LINUX_PTS "${CMAKE_BINARY_DIR}/log/linux-pts" CACHE INTERNAL "/dev/pts mount path")
 
 ##### BUILD RAW TARGET #####
 
@@ -70,7 +76,8 @@ add_custom_target(
 add_custom_target(
     unmounting_raw_disk
     # EFI Partition
-    COMMAND ${LOSETUP_PATH} --raw | grep ${VM_NAME}.raw | cut -f 1 -d " " | xargs -I {} ${UDISKCTL_PATH} unmount -b {}p3 
+    COMMAND ${LOSETUP_PATH} --raw | grep ${VM_NAME}.raw | cut -f 1 -d " " | xargs -I {} ${UDISKCTL_PATH} unmount -b {}p1 
+
     # ROOT Partition
     COMMAND ${LOSETUP_PATH} --raw | grep ${VM_NAME}.raw | cut -f 1 -d " " | xargs -I {} ${UDISKCTL_PATH} unmount -b {}p3 
     COMMENT "Unmounting..."
@@ -104,45 +111,14 @@ add_custom_target(
     unloop_raw_disk
     COMMAND ${LOSETUP_PATH} --raw | grep ${VM_NAME}.raw | cut -f 1 -d " " | xargs -I {} ${LOSETUP_PATH} -d {}
     COMMENT "Unlooping..."
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    VERBATIM
 )
 
-######################################
-# TARG: download_debian9
-# PROC: setup/base
-# DESC: Download debian 9 stretch using debootstrap
-######################################
-add_custom_target(
-    download_debian9
-    # Debian 9 Stretch
-    COMMAND sudo rm -rf /tmp/debian-9 && sudo debootstrap --arch amd64 --include=curl,git,zsh,gdisk stretch /tmp/debian-9 http://archive.debian.org/debian && sudo tar -czf ${CMAKE_BINARY_DIR}/debian-9.tar.gz -C /tmp debian-9
-    COMMENT "Downloading DEBIAN 9 Stretch..."
-)
-
-######################################
-# TARG: unpack_debian9
-# PROC: setup/base
-# DESC: Extract debian tar to ROOT partition
-######################################
-add_custom_target(
-    unpack_debian9
-    COMMAND cat ${LOG_ROOT} | xargs -I {} sudo tar --strip-components=1 -xzvf ${CMAKE_BINARY_DIR}/debian-9.tar.gz -C {} 
-    COMMENT "${CMAKE_BINARY_DIR} >> Unpack DEBIAN 9 Stretch to raw disk..."
-)
-
-######################################
-# TARG: chroot_debian9
-# PROC: setup/base
-# DESC: Debian `chroot`-ing test
-######################################
-add_custom_target(
-    chroot_debian9
-    COMMAND cat ${LOG_ROOT} | xargs -I {} sudo chroot {} cat /etc/os-release
-    COMMENT "`chroot` to Debian 9 Stretch in raw disk..."
-)
 
 ######################################
 # TARG: make_loops
-# PROC: setup/base
+# PROC: init/disk
 # DESC: Make loop device manually. Mostly after reboot
 ######################################
 add_custom_target(
@@ -153,7 +129,7 @@ add_custom_target(
 
 ######################################
 # TARG: make_loops_mounted
-# PROC: setup/base
+# PROC: init/disk
 # DESC: Make loop device mounted manually. Mostly after reboot
 ######################################
 add_custom_target(
@@ -162,16 +138,20 @@ add_custom_target(
     # Remounting Root Partition
     # note: mount path match with partition table  
     # TODO: Find better solution for removing explicit path
-    COMMAND cat ${LOG_LOOPS} | xargs -I {} sh -c 'sudo mount -o remount,exec {}p3 /media/$ENV{USER}/root'
+
+    COMMAND cat ${LOG_LOOPS} | xargs -I {} sh -c 'sudo mount -o remount,exec {}p3 `grep -oP '/media/[A-Z-a-z\/]\+' ${LOG_ROOT}`'
 
     # Remounting EFI Partition
     # note: mount path match with partition table  
-    COMMAND cat ${LOG_LOOPS} | xargs -I {} sh -c 'sudo mount -o remount,exec {}p1 /media/$ENV{USER}/EFI'
+    COMMAND cat ${LOG_LOOPS} | xargs -I {} sh -c 'sudo mount -o remount,exec {}p1 `grep -oP '/media/[A-Z-a-z\/]\+' ${LOG_EFI}`'
 
     DEPENDS ${LOG_ROOT}
     DEPENDS ${LOG_EFI}
     COMMENT "Make loops for ${VM_NAME}.raw..."
 )
+
+
+
 
 #======================================
 
@@ -197,9 +177,13 @@ add_custom_command(
 ######################################
 add_custom_command(
     OUTPUT ${LOG_LOOPS}
+
     COMMAND ${UDISKCTL_PATH} loop-setup -f ${RAWDISK} | head -c -2 | cut -f 5 -d " " > ${LOG_LOOPS}
-    COMMAND cat ${LOG_LOOPS} | xargs -I {} sudo chmod 666 {}
+
+    #COMMAND cat ${LOG_LOOPS} | xargs -I {} sudo chmod 666 {}
+
     COMMENT "Create loop device for ${VM_NAME}.raw..."
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     VERBATIM
 )
 
@@ -212,8 +196,12 @@ add_custom_command(
 	OUTPUT ${LOG_ROOT}
     # ROOT Partition
 	COMMAND cat ${LOG_LOOPS} | xargs -I {} ${UDISKCTL_PATH} mount --block-device {}p3 --filesystem-type=auto --no-user-interaction | cut -f 4 -d " " > ${LOG_ROOT}
+
+    #COMMAND bash -c "sudo mkdir -p /media/$ENV{USER}/root && sudo mount ${DEV_LOOPS}p3 /media/$ENV{USER}/root"
+
     DEPENDS ${LOG_LOOPS}
 	COMMENT "Mounting ROOT"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     VERBATIM
 )
 
@@ -225,11 +213,14 @@ add_custom_command(
 add_custom_command(
 	OUTPUT ${LOG_EFI}
     # EFI Partition
+    # EFI should place on /boot/efi
     COMMAND cat ${LOG_LOOPS} | xargs -I {} ${UDISKCTL_PATH} mount -b {}p1 --filesystem-type=auto | cut -f 4 -d " " > ${LOG_EFI}
+
     DEPENDS ${LOG_LOOPS}
+    DEPENDS ${LOG_ROOT}
 	COMMENT "Mounting EFI"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     VERBATIM
 )
-
 
 #=========================================

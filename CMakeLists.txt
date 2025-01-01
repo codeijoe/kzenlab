@@ -49,9 +49,9 @@ set(VM_DISK_SIZE "0" CACHE STRING "VM Disk size")
 #### ISO
 set(ISO_HOME "/home/ijoe/ISO/LINUX/DEBIAN" CACHE STRING "ISO DEBIAN Directory")
 set(ISO_DEBIAN127_DVD "debian-12.7.0-amd64-DVD-1.iso" CACHE STRING "Debian ISO File")
-set(ISO_DEBIAN128_CD "debian-12.8.0-amd64-netinst.iso" CACHE STRING "Debian Netinstall CD ISO File")
-set(ISO_DEBIAN128_DVD_1 "debian-12.8.0-amd64-DVD-1.iso" CACHE STRING "Debian Netinstall CD ISO File")
 set(ISO_DEBIAN128_LIVE_XFCE "debian-live-12.8.0-amd64-xfce.iso" CACHE STRING "Debian Netinstall CD ISO File")
+set(ISO_DEBIAN128_CD "debian-12.8.0-amd64-netinst.iso" CACHE STRING "Debian Netinstall CD ISO File")
+set(ISO_DEBIAN128_DVD_1 "debian-12.8.0-amd64-DVD-1.iso" CACHE STRING "Debian DVD 1 ISO File")
 
 #### QEMU
 set(QEMU_HOME "/home/ijoe/QEMU_VM" CACHE STRING "QEMU VM Home Directory")
@@ -91,8 +91,7 @@ set(ROOT_PART "default" CACHE STRING "ROOT Partition")
 add_subdirectory(raw-disk)
 
 #### Base OS Stage
-#add_subdirectory(base-os)
-
+add_subdirectory(base-os)
 
 ########## TARGET ############
 
@@ -206,6 +205,7 @@ add_custom_target(
     COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_BINARY_DIR}/*   
     DEPENDS unloop_raw_disk
     DEPENDS unmounting_raw_disk
+    DEPENDS unmounting_linux
     COMMENT "Cleaning the build directory and unmount and unloop device... ${CMAKE_BINARY_DIR}"
 )
 

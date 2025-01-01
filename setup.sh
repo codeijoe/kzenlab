@@ -38,6 +38,12 @@ _vm_domain=default
 _vm_hostname=default
 _hyper_type=default
 _vm_disk_size=default
+_dvd1=default
+_dvd2=default
+_dvd3=default
+_dvd4=default
+_dvd5=default
+_dvd6=default
 
 ##### KZENLAB Functions #####
 
@@ -47,6 +53,12 @@ _vm_disk_size=default
 # RETS: None
 function import_env() {
 	_iso_home=$(grep -F -- "ISO_HOME" .env | cut -d'=' -f2)
+	_dvd1=$(grep -F -- "DVD1" .env | cut -d'=' -f2)
+	_dvd2=$(grep -F -- "DVD2" .env | cut -d'=' -f2)
+	_dvd3=$(grep -F -- "DVD3" .env | cut -d'=' -f2)
+	_dvd4=$(grep -F -- "DVD4" .env | cut -d'=' -f2)
+	_dvd5=$(grep -F -- "DVD5" .env | cut -d'=' -f2)
+	_dvd6=$(grep -F -- "DVD6" .env | cut -d'=' -f2)
     _qemu_home=$(grep -F -- "QEMU_HOME" .env | cut -d'=' -f2)
     _vbox_home=$(grep -F -- "VBOX_HOME" .env | cut -d'=' -f2)
     _vbox_vm_home=$(grep -F -- "VBOX_VM_HOME" .env | cut -d'=' -f2)
@@ -99,24 +111,85 @@ function create_raw_disk(){
     cmake --build build --target mounting_raw_disk
 }
 
-function setup_base_os(){
-    unpack_debian9 && \
-	cmake --build build --target chroot_debian9	
-}
-
 function download_debian9(){
 	cmake --build build --target download_debian9	
+}
+
+function download_debian12(){
+	cmake --build build --target download_debian12	
 }
 
 function unpack_debian9(){
 	cmake --build build --target unpack_debian9
 }
 
-function build_debian9(){
-	cmake --build build --target build-base-os
+function unpack_debian12(){
+	cmake --build build --target unpack_debian12
 }
 
+
 function remounting(){
+	echo "WARN: Remouting at base-os stage"
+
+	## /dev
+	if mount | grep -q "on /media/$USER/root/dev/hugepages "; then
+    	sudo umount /media/$USER/root/dev/hugepages
+	fi
+	if mount | grep -q "on /media/$USER/root/dev/mqueue "; then
+    	sudo umount /media/$USER/root/dev/mqueue
+	fi
+	if mount | grep -q "on /media/$USER/root/dev/shm "; then
+    	sudo umount /media/$USER/root/dev/shm
+	fi
+	if mount | grep -q "on /media/$USER/root/dev/pts "; then
+    	sudo umount /media/$USER/root/dev/pts
+	fi
+	if mount | grep -q "on /media/$USER/root/dev "; then
+    	sudo umount /media/$USER/root/dev
+	fi
+
+
+	## /sys
+	if mount | grep -q "on /media/$USER/root/sys/hugepages "; then
+    	sudo umount /media/$USER/root/sys/hugepages
+	fi
+	if mount | grep -q "on /media/$USER/root/sys/mqueue "; then
+    	sudo umount /media/$USER/root/sys/mqueue
+	fi
+	if mount | grep -q "on /media/$USER/root/sys/shm "; then
+    	sudo umount /media/$USER/root/sys/shm
+	fi
+	if mount | grep -q "on /media/$USER/root/sys/pts "; then
+    	sudo umount /media/$USER/root/sys/pts
+	fi
+	if mount | grep -q "on /media/$USER/root/sys "; then
+    	sudo umount /media/$USER/root/sys
+	fi
+
+	## /sys
+	if mount | grep -q "on /media/$USER/root/proc/hugepages "; then
+    	sudo umount /media/$USER/root/proc/hugepages
+	fi
+	if mount | grep -q "on /media/$USER/root/proc/mqueue "; then
+    	sudo umount /media/$USER/root/proc/mqueue
+	fi
+	if mount | grep -q "on /media/$USER/root/proc/shm "; then
+    	sudo umount /media/$USER/root/proc/shm
+	fi
+	if mount | grep -q "on /media/$USER/root/proc/pts "; then
+    	sudo umount /media/$USER/root/proc/pts
+	fi
+	if mount | grep -q "on /media/$USER/root/proc "; then
+    	sudo umount /media/$USER/root/proc
+	fi
+
+	if mount | grep -q "on /media/$USER/root "; then
+    	sudo umount /media/$USER/root
+	fi
+	if mount | grep -q "on /media/$USER/EFI "; then
+    	sudo umount /media/$USER/EFI
+	fi
+
 	if [ -f build/log/loops ] ; then
     	rm build/log/loops
 	fi
@@ -126,9 +199,64 @@ function remounting(){
 	if [ -f build/log/loops ] ; then
     	rm build/log/efi
 	fi
-	cmake --build build --target make_loops_mounted
+	if [ -f build/log/linux-dev ] ; then
+    	rm build/log/linux-dev
+	fi
+	if [ -f build/log/linux-proc ] ; then
+    	rm build/log/linux-proc
+	fi
+	if [ -f build/log/linux-sys ] ; then
+    	rm build/log/linux-sys
+	fi
+	if [ -f build/log/linux-pts ] ; then
+    	rm build/log/linux-pts
+	fi
+	if  ! mount | grep -q "on /media/$USER/root " ; then
+		cmake --build build --target make_loops_mounted && \
+		cmake --build build --target mounting_linux
+
+	fi
 }
 
+function mount_dvd1(){
+	if  ! mount | grep -q "DVD1"  ; then
+    	sudo mkdir -p /mnt/DVD1 && sudo mkdir -p /media/$USER/root/mnt/DVD1 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd1 /mnt/DVD1 && \
+		sudo mount --bind /mnt/DVD1 /media/$USER/root/mnt/DVD1
+		#sudo cp -f base-os/DVD1.list /media/$USER/root/etc/apt/sources.list.d/
+	fi
+}
+function unmount_dvd1(){
+    #sudo umount $_iso_home/$_dvd1
+    sudo umount /media/$USER/root/mnt/DVD1 && sudo umount /mnt/DVD1
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD1."    	
+	else
+    	echo "Done unmounting DVD1."    	
+	fi
+	if [ -d "/mnt/DVD1" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD1
+       sudo rm -rf /mnt/DVD1
+    fi
+}
+
+function set_base_os(){
+    unpack_debian12 && \
+	cmake --build build --target mounting_linux && \
+	cmake --build build --target chroot_debian
+}
+
+function set_kernel(){
+	if [ ! -d "/mnt/DVD1" ]; then
+    	echo "Mount DVD1 before installing some packages."
+    else
+		cmake --build build --target set_kernel 
+	fi
+}
+
+function set_uefi_boot(){
+	cmake --build build --target set_uefi_boot --verbose
+}
 
 # DESC: Demolish empty virtual disk
 # ARGS: None
@@ -370,8 +498,20 @@ function parse_params() {
 			-rem|--remounting)
 					remounting
 				;;
-            --setup-baseos)
-					setup_base_os
+			--mount-dvd1)
+					mount_dvd1
+				;;
+			--unmount-dvd1)
+					unmount_dvd1
+				;;
+            --set-base-os)
+					set_base_os
+				;;
+            --set-kernel)
+					set_kernel
+				;;
+            --set-uefi-boot)
+					set_uefi_boot
 				;;
             --build-by-config)
 					build_empty_disk

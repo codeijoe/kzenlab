@@ -20,3 +20,29 @@
 ######################################
 #!/bin/bash
 
+function set_locale(){
+	apt install locales -y && \
+	sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+	locale-gen
+}
+
+function set_kernel(){
+	apt install -y linux-image-amd64
+}
+
+function set_grub(){
+	#apt install -y --no-install-recommends -o Dpkg::Options::="--force-confold" grub-efi-amd64 \
+	#grub-efi-amd64-signed refind  \
+	#efibootmgr efivar efitools
+
+	#DEBIAN_FRONTEND=noninteractive apt install -y grub-efi-amd64-signed
+	echo "SETTT GRUB.DONE"
+}
+
+function set_uefi(){
+	echo "SETTT UEFI.DONE"
+}
+
+
+#COMMAND bash -c "sudo grub-install --target=x86_64-efi `grep -oP '\/[A-Za-z0-9]+' ${LOG_LOOPS}` --bootloader-id=GRUB --modules=tpm --efi-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}` --boot-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}`/EFI/BOOT --uefi-secure-boot --removable"
+

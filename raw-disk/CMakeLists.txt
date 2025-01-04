@@ -36,6 +36,7 @@ set(LOG_LINUX_PROC "${CMAKE_BINARY_DIR}/log/linux-proc" CACHE INTERNAL "/proc mo
 set(LOG_LINUX_SYS "${CMAKE_BINARY_DIR}/log/linux-sys" CACHE INTERNAL "/sys mount path")
 set(LOG_LINUX_DEV "${CMAKE_BINARY_DIR}/log/linux-dev" CACHE INTERNAL "/dev mount path")
 set(LOG_LINUX_PTS "${CMAKE_BINARY_DIR}/log/linux-pts" CACHE INTERNAL "/dev/pts mount path")
+set(LOG_LINUX_RUN "${CMAKE_BINARY_DIR}/log/linux-run" CACHE INTERNAL "/run mount path")
 
 ##### BUILD RAW TARGET #####
 
@@ -145,8 +146,8 @@ add_custom_target(
     # note: mount path match with partition table  
     COMMAND cat ${LOG_LOOPS} | xargs -I {} sh -c 'sudo mount -o remount,exec {}p1 `grep -oP '/media/[A-Z-a-z\/]\+' ${LOG_EFI}`'
 
-    DEPENDS ${LOG_ROOT}
     DEPENDS ${LOG_EFI}
+    DEPENDS ${LOG_ROOT}
     COMMENT "Make loops for ${VM_NAME}.raw..."
 )
 

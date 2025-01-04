@@ -45,6 +45,8 @@ _dvd4=default
 _dvd5=default
 _dvd6=default
 
+_loops=default
+
 ##### KZENLAB Functions #####
 
 # DESC: Import external .env file to script
@@ -99,7 +101,11 @@ function setup_cmake(){
 # OUTS: None
 # RETS: None
 function clean_cmake(){
-	cmake --build build --target clean_cmake
+	unmount_linux && \
+	unloop && \
+	sudo rm -rf build/*   
+
+	#cmake --build build --target clean_cmake
 }
 
 # DESC: Build empty virtual disk
@@ -127,68 +133,122 @@ function unpack_debian12(){
 	cmake --build build --target unpack_debian12
 }
 
+function unloop(){
+	# Unloop RAWDISK
+    _loops=$(losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+' )
 
-function remounting(){
-	echo "WARN: Remouting at base-os stage"
+    losetup -d $_loops 
+    if [ $? -ne 0 ]; then
+    	echo "Error unloop..."
+    else
+	    echo $_loops" unloopped"
+	fi
+
+    #echo $_loops | xargs -I {} losetup -d {}
+	#losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+' \
+	#| xargs -I {} losetup -d {}
+
+}
+
+function start_qemu_uefi(){
+	_file=$_vm_name
+	_file+='.raw'
+	echo $_file
+	qemu-system-x86_64 -drive file=build/$_file,format=raw,if=virtio \
+	-enable-kvm \
+	-bios /usr/share/OVMF/OVMF_CODE.fd \
+	-boot menu=on
+}
+
+function unmount_linux(){
 
 	## /dev
-	if mount | grep -q "on /media/$USER/root/dev/hugepages "; then
-    	sudo umount /media/$USER/root/dev/hugepages
-	fi
-	if mount | grep -q "on /media/$USER/root/dev/mqueue "; then
-    	sudo umount /media/$USER/root/dev/mqueue
-	fi
-	if mount | grep -q "on /media/$USER/root/dev/shm "; then
-    	sudo umount /media/$USER/root/dev/shm
-	fi
-	if mount | grep -q "on /media/$USER/root/dev/pts "; then
-    	sudo umount /media/$USER/root/dev/pts
-	fi
 	if mount | grep -q "on /media/$USER/root/dev "; then
-    	sudo umount /media/$USER/root/dev
+		mount | grep ${USER}'/root/dev' | cut -d' ' -f3 | sort -r | xargs -I {} sudo umount {}
+    	echo "/root/dev unmounted"
+	fi
+	#if mount | grep -q "on /media/$USER/root/dev "; then
+    #	sudo umount /media/$USER/root/dev
+    #	echo "/root/dev unmounted"
+	#fi
+	if ! mount | grep -q "on /media/$USER/root/dev "; then
+    	rm -rf build/log/linux-dev
 	fi
 
 
 	## /sys
-	if mount | grep -q "on /media/$USER/root/sys/hugepages "; then
-    	sudo umount /media/$USER/root/sys/hugepages
+	if mount | grep -q "on /media/$USER/root/sys "; then
+    	mount | grep ${USER}'/root/sys/' | cut -d' ' -f3 | xargs -I {} sudo umount {}
 	fi
-	if mount | grep -q "on /media/$USER/root/sys/mqueue "; then
-    	sudo umount /media/$USER/root/sys/mqueue
-	fi
-	if mount | grep -q "on /media/$USER/root/sys/shm "; then
-    	sudo umount /media/$USER/root/sys/shm
-	fi
-	if mount | grep -q "on /media/$USER/root/sys/pts "; then
-    	sudo umount /media/$USER/root/sys/pts
-	fi
+
 	if mount | grep -q "on /media/$USER/root/sys "; then
     	sudo umount /media/$USER/root/sys
+    	echo "/root/sys unmounted"
+	fi
+	if ! mount | grep -q "on /media/$USER/root/sys "; then
+    	rm -rf build/log/linux-sys
 	fi
 
-	## /sys
-	if mount | grep -q "on /media/$USER/root/proc/hugepages "; then
-    	sudo umount /media/$USER/root/proc/hugepages
-	fi
-	if mount | grep -q "on /media/$USER/root/proc/mqueue "; then
-    	sudo umount /media/$USER/root/proc/mqueue
-	fi
-	if mount | grep -q "on /media/$USER/root/proc/shm "; then
-    	sudo umount /media/$USER/root/proc/shm
-	fi
-	if mount | grep -q "on /media/$USER/root/proc/pts "; then
-    	sudo umount /media/$USER/root/proc/pts
+	## /proc
+	if mount | grep -q "on /media/$USER/root/proc "; then
+		mount | grep ${USER}'/root/proc' | cut -d' ' -f3 | sort -r | xargs -I {} sudo umount {}
+    	echo "/root/proc unmounted"
 	fi
 	if mount | grep -q "on /media/$USER/root/proc "; then
     	sudo umount /media/$USER/root/proc
+    	echo "/root/proc unmounted2"
+	fi
+	if ! mount | grep -q "on /media/$USER/root/proc "; then
+    	rm -rf build/log/linux-proc
 	fi
 
-	if mount | grep -q "on /media/$USER/root "; then
-    	sudo umount /media/$USER/root
+	# Run
+	if mount | grep -q "on /media/$USER/root/run "; then
+		mount | grep ${USER}'/root/run/user/1000' | cut -d' ' -f3 | sort -r | xargs -I {} sudo umount {}
+	fi
+	if mount | grep -q "on /media/$USER/root/run "; then
+		mount | grep ${USER}'/root/run' | cut -d' ' -f3 | sort -r | xargs -I {} sudo umount {}
+    	echo "/root/run unmounted"
+	fi
+	#if mount | grep -q "on /media/$USER/root/run "; then
+    #	sudo umount /media/$USER/root/run
+    #	echo "/root/run unmounted"
+	#fi
+	if ! mount | grep -q "on /media/$USER/root/run "; then
+    	rm -rf build/log/linux-run
+	fi
+
+	_loops_p1=$(losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+')
+	_loops_p3=$(losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+')
+	_loops_p1+="p1"
+	_loops_p3+="p3"
+
+    # EFI
+	if mount | grep -q "on /media/$USER/root/boot/efi "; then
+		sudo umount /media/$USER/root/boot/efi
+    	#echo $_loops_p1" unmounted"
 	fi
 	if mount | grep -q "on /media/$USER/EFI "; then
-    	sudo umount /media/$USER/EFI
+    	udisksctl unmount -b $_loops_p1
+    	echo $_loops_p1" unmounted"
 	fi
+	if ! mount | grep -q "on /media/$USER/EFI "; then
+    	rm -rf build/log/efi
+	fi
+
+	# ROOT
+	if mount | grep -q "on /media/$USER/root "; then
+    	udisksctl unmount -b $_loops_p3
+    	echo $_loops_p3" unmounted"
+	fi
+	if ! mount | grep -q "on /media/$USER/root "; then
+    	rm -rf build/log/root
+	fi
+
+}
+
+function remounting(){
+	echo "WARN: Remouting at base-os stage"
 
 	if [ -f build/log/loops ] ; then
     	rm build/log/loops
@@ -211,11 +271,33 @@ function remounting(){
 	if [ -f build/log/linux-pts ] ; then
     	rm build/log/linux-pts
 	fi
-	if  ! mount | grep -q "on /media/$USER/root " ; then
-		cmake --build build --target make_loops_mounted && \
-		cmake --build build --target mounting_linux
-
+	if [ -f build/log/linux-pts ] ; then
+    	rm build/log/linux-run
 	fi
+	if  ! mount | grep -q "on /media/$USER/root " ; then
+		cmake --build build --target make_loops_mounted --verbose && \
+		cmake --build build --target mounting_linux
+	fi
+}
+
+function mount_dvd(){
+	mount_dvd1 && \
+	mount_dvd2 && \
+	mount_dvd3 && \
+	mount_dvd4 && \
+	mount_dvd5 && \
+	mount_dvd6 && \
+	sudo cp -f base-os/DVD.list /media/$USER/ijoe/etc/apt/sources.list.d/
+}
+
+function unmount_dvd(){
+	unmount_dvd1 && \
+	unmount_dvd2 && \
+	unmount_dvd3 && \
+	unmount_dvd4 && \
+	unmount_dvd5 && \
+	unmount_dvd6 && \
+	sudo rm -rf /media/$USER/ijoe/etc/apt/sources.list.d/DVD.list
 }
 
 function mount_dvd1(){
@@ -223,9 +305,49 @@ function mount_dvd1(){
     	sudo mkdir -p /mnt/DVD1 && sudo mkdir -p /media/$USER/root/mnt/DVD1 
 		sudo mount -t iso9660 -o loop $_iso_home/$_dvd1 /mnt/DVD1 && \
 		sudo mount --bind /mnt/DVD1 /media/$USER/root/mnt/DVD1
-		#sudo cp -f base-os/DVD1.list /media/$USER/root/etc/apt/sources.list.d/
 	fi
 }
+
+function mount_dvd2(){
+	if  ! mount | grep -q "DVD2"  ; then
+    	sudo mkdir -p /mnt/DVD2 && sudo mkdir -p /media/$USER/root/mnt/DVD2 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd2 /mnt/DVD2 && \
+		sudo mount --bind /mnt/DVD2 /media/$USER/root/mnt/DVD2
+	fi
+}
+
+function mount_dvd3(){
+	if  ! mount | grep -q "DVD3"  ; then
+    	sudo mkdir -p /mnt/DVD3 && sudo mkdir -p /media/$USER/root/mnt/DVD3 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd3 /mnt/DVD3 && \
+		sudo mount --bind /mnt/DVD3 /media/$USER/root/mnt/DVD3
+	fi
+}
+
+function mount_dvd4(){
+	if  ! mount | grep -q "DVD4"  ; then
+    	sudo mkdir -p /mnt/DVD4 && sudo mkdir -p /media/$USER/root/mnt/DVD4 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd4 /mnt/DVD4 && \
+		sudo mount --bind /mnt/DVD4 /media/$USER/root/mnt/DVD4
+	fi
+}
+
+function mount_dvd5(){
+	if  ! mount | grep -q "DVD5"  ; then
+    	sudo mkdir -p /mnt/DVD5 && sudo mkdir -p /media/$USER/root/mnt/DVD5 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd5 /mnt/DVD5 && \
+		sudo mount --bind /mnt/DVD5 /media/$USER/root/mnt/DVD5
+	fi
+}
+
+function mount_dvd6(){
+	if  ! mount | grep -q "DVD6"  ; then
+    	sudo mkdir -p /mnt/DVD6 && sudo mkdir -p /media/$USER/root/mnt/DVD6 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd6 /mnt/DVD6 && \
+		sudo mount --bind /mnt/DVD6 /media/$USER/root/mnt/DVD6
+	fi
+}
+
 function unmount_dvd1(){
     #sudo umount $_iso_home/$_dvd1
     sudo umount /media/$USER/root/mnt/DVD1 && sudo umount /mnt/DVD1
@@ -239,6 +361,72 @@ function unmount_dvd1(){
        sudo rm -rf /mnt/DVD1
     fi
 }
+
+function unmount_dvd2(){
+    sudo umount /media/$USER/root/mnt/DVD2 && sudo umount /mnt/DVD2
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD2."    	
+	else
+    	echo "Done unmounting DVD2."    	
+	fi
+	if [ -d "/mnt/DVD2" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD2
+       sudo rm -rf /mnt/DVD2
+    fi
+}
+
+function unmount_dvd3(){
+    sudo umount /media/$USER/root/mnt/DVD3 && sudo umount /mnt/DVD3
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD3."
+	else
+    	echo "Done unmounting DVD3." 
+	fi
+	if [ -d "/mnt/DVD3" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD3
+       sudo rm -rf /mnt/DVD3
+    fi
+}
+
+function unmount_dvd4(){
+    sudo umount /media/$USER/root/mnt/DVD4 && sudo umount /mnt/DVD4
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD4."
+	else
+    	echo "Done unmounting DVD4." 
+	fi
+	if [ -d "/mnt/DVD4" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD4
+       sudo rm -rf /mnt/DVD4
+    fi
+}
+
+function unmount_dvd5(){
+    sudo umount /media/$USER/root/mnt/DVD5 && sudo umount /mnt/DVD5
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD5."
+	else
+    	echo "Done unmounting DVD5." 
+	fi
+	if [ -d "/mnt/DVD5" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD5
+       sudo rm -rf /mnt/DVD5
+    fi
+}
+
+function unmount_dvd6(){
+    sudo umount /media/$USER/root/mnt/DVD6 && sudo umount /mnt/DVD6
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD6."
+	else
+    	echo "Done unmounting DVD6." 
+	fi
+	if [ -d "/mnt/DVD6" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD6
+       sudo rm -rf /mnt/DVD6
+    fi
+}
+
 
 function set_base_os(){
     unpack_debian12 && \
@@ -458,7 +646,7 @@ function script_exit() {
 function parse_params() {
     local param
     local args=0
-    if [[ $# -eq 0 ]] then 
+    if [[ $# -eq 0 ]]; then 
         script_usage
     fi
     while [[ $# -gt 0 ]]; do
@@ -495,14 +683,20 @@ function parse_params() {
 	        -db9|--build-debian9)
 					build_debian9
 				;;
+			-ulx|--unmount-linux)
+					unmount_linux
+				;;
+			-unl|--unloop)
+					unloop
+				;;
 			-rem|--remounting)
 					remounting
 				;;
-			--mount-dvd1)
-					mount_dvd1
+			--mount-dvd)
+					mount_dvd
 				;;
-			--unmount-dvd1)
-					unmount_dvd1
+			--unmount-dvd)
+					unmount_dvd
 				;;
             --set-base-os)
 					set_base_os
@@ -512,6 +706,9 @@ function parse_params() {
 				;;
             --set-uefi-boot)
 					set_uefi_boot
+				;;
+			--start-qemu-uefi)
+					start_qemu_uefi
 				;;
             --build-by-config)
 					build_empty_disk

@@ -105,7 +105,7 @@ add_custom_target(
     ## 2 set
     ## 3 test using QEMU
 
-	#COMMAND bash -c "echo $ENV{VM_HOSTNAME}"
+    COMMAND bash -c "echo SET_UEFI_BOOT $VM_HOSTNAME"
 
 	#COMMAND bash -c "sudo grub-install --target=x86_64-efi `grep -oP '\/[A-Za-z0-9]+' ${LOG_LOOPS}` --bootloader-id=GRUB --modules=tpm --efi-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}` --boot-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}`/EFI/BOOT --uefi-secure-boot --removable"
 	
@@ -119,7 +119,9 @@ add_custom_target(
 
 	#COMMAND grub-install --target=x86_64-efi --efi-directory=${} --boot-directory=/mnt/efi/boot --removable ${LOG_LOOPS}
 
-    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_uefi'"
+	## CANNOT SET UEFI ON BIOS DEVICE
+	## YOU SHOULD RUN IT ON QEMU
+    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_uefi \'${DEV_LOOPS}\' '"
 
     DEPENDS ${SET_EFI_MOUNT}
     DEPENDS ${SET_GRUB}
@@ -131,25 +133,31 @@ add_custom_target(
 add_custom_command(
 	OUTPUT ${SET_EFI_MOUNT}
 
-	COMMAND bash -c "echo ${DEV_LOOPS}p1 && echo ${PATH_ROOT}/boot/efi"
+	#COMMAND bash -c "sudo echo ${DEV_LOOPS}p1 '&&' ${PATH_ROOT}/boot/efi"
+
+	COMMAND bash -c "sudo mkdir -p ${PATH_ROOT}/boot/efi"
 
 	# Mounting EFI
-    #COMMAND bash -c "sudo mount ${DEV_LOOPS}p1 ${PATH_ROOT}/boot/efi &> ${SET_EFI_MOUNT}"
+    COMMAND bash -c "sudo mount ${DEV_LOOPS}p1 ${PATH_ROOT}/boot/efi" &> ${SET_EFI_MOUNT}
 
+	DEPENDS ${SET_APT}
+    DEPENDS ${LOG_ROOT}
 	COMMENT "Mouting EFI for UEFI Grub "
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
  	VERBATIM
 )
 add_custom_command(
 	OUTPUT ${SET_GRUB}
+    COMMAND bash -c "echo SET_GRUB: ${DEV_LOOPS}p1 '||' ${PATH_ROOT}/boot/efi"
 
-    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_grub'" &> ${SET_GRUB}
+    # Set Device MAP
+    #COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_devicemap \'${DEV_LOOPS}\' '"
 
-    #COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} apt install -yq grub-efi-amd64-signed " &> ${SET_GRUB} 
+    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_grub \'${DEV_LOOPS}\' '" &> ${SET_GRUB}
 
 	DEPENDS ${SET_APT}
     DEPENDS ${LOG_ROOT}
-	COMMENT "Installing Grub "
+	COMMENT "Installing and setting grub "
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
  	VERBATIM
 )
@@ -167,6 +175,7 @@ add_custom_target(
     DEPENDS ${LOG_LINUX_DEV}
     DEPENDS ${LOG_LINUX_SYS}
     DEPENDS ${LOG_LINUX_PROC}
+    DEPENDS ${LOG_LINUX_RUN}
 
     COMMENT "Mounting linux system partition..."
 )
@@ -177,6 +186,7 @@ add_custom_target(
     DEPENDS unmount_proc
     DEPENDS unmount_sys
     DEPENDS unmount_dev
+    DEPENDS unmount_run
 
     COMMENT "Unmounting linux system partition..."
 )
@@ -232,10 +242,9 @@ add_custom_command(
 
     COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/sources.list ${CHROOT_DIR}/etc/apt/sources.list &> ${SET_APT}"
 
-    COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/DVD1.list ${CHROOT_DIR}/etc/apt/sources.list.d/ &> ${SET_APT}"
+    COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/DVD.list ${CHROOT_DIR}/etc/apt/sources.list.d/ &> ${SET_APT}"
 
     COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/debootstrap.list ${CHROOT_DIR}/etc/apt/sources.list.d/ &> ${SET_APT}"
-
 
     COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/base-os.sh ${CHROOT_DIR}/root && sudo chmod +x ${CHROOT_DIR}/root/base-os.sh" &> ${SET_APT}
 
@@ -247,6 +256,19 @@ add_custom_command(
  	VERBATIM
 )
 
+######################################
+# COMD: log/linux-run
+# PROC: setup/base
+# DESC: Mounting Linux `run` directory from loop device 
+######################################
+add_custom_command(
+    OUTPUT ${LOG_LINUX_RUN}
+    COMMAND bash -c  "sudo mount --make-rslave --rbind /run `grep -oP '/media/[A-Z-a-z\/]\+' ${LOG_ROOT}`/run 2> ${LOG_LINUX_RUN}"
+
+    DEPENDS ${LOG_ROOT}
+    COMMENT "Mounting `/run`"  
+    VERBATIM
+)
 
 ######################################
 # COMD: log/linux-dev
@@ -264,7 +286,7 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT ${LOG_LINUX_SYS}
-    COMMAND bash -c  "sudo mount --make-rslave --rbind /dev `grep -oP '/media/[A-Z-a-z\/]\+' ${LOG_ROOT}`/sys &> ${LOG_LINUX_SYS}"
+    COMMAND bash -c  "sudo mount --make-rslave  --rbind /sys `grep -oP '/media/[A-Z-a-z\/]\+' ${LOG_ROOT}`/sys &> ${LOG_LINUX_SYS}"
 
     DEPENDS ${LOG_ROOT}
     COMMENT "Mounting `/sys`"
@@ -275,7 +297,7 @@ add_custom_command(
 add_custom_command(
     OUTPUT ${LOG_LINUX_PROC}
 
-    COMMAND bash -c  "sudo mount --make-rslave --rbind /dev ${PATH_ROOT}/proc &> ${LOG_LINUX_PROC}"
+    COMMAND bash -c  "sudo mount --make-rslave  --rbind /proc ${PATH_ROOT}/proc &> ${LOG_LINUX_PROC}"
 
     DEPENDS ${LOG_ROOT}
     COMMENT "Mounting `/proc`"
@@ -316,5 +338,16 @@ add_custom_command(
     COMMAND bash -c "sudo umount `grep -oP '/media/[A-Z-a-z\/]\+' ${LOG_ROOT}`/dev/pts" 
 
     COMMENT "Remove `/dev` tails..."
+    VERBATIM
+)
+
+add_custom_command(
+    OUTPUT unmount_run_tail
+
+    COMMAND bash -c "mount | grep $ENV{USER}'/root/run/user/1000' | cut -d' ' -f3 | sort -r | xargs -I {} sudo umount {}" &> unmount_run_tail
+
+    COMMAND bash -c "mount | grep $ENV{USER}'/root/run' | cut -d' ' -f3 | sort -r | xargs -I {} sudo umount {}" &> unmount_run_tail
+
+    COMMENT "Remove `/run` tails..."
     VERBATIM
 )

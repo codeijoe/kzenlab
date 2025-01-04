@@ -202,7 +202,7 @@ add_custom_target(
 
 add_custom_target(
 	clean_cmake
-    COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_BINARY_DIR}/*   
+    #COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_BINARY_DIR}/*   
     DEPENDS unloop_raw_disk
     DEPENDS unmounting_raw_disk
     DEPENDS unmounting_linux

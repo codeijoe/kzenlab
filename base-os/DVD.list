@@ -1,0 +1,7 @@
+# Debian 12 Bookwork DVD
+deb [trusted=yes] file:/mnt/DVD1 bookworm contrib main non-free-firmware
+deb [trusted=yes] file:/mnt/DVD2 bookworm contrib main non-free-firmware
+deb [trusted=yes] file:/mnt/DVD3 bookworm contrib main non-free-firmware
+deb [trusted=yes] file:/mnt/DVD4 bookworm contrib main non-free-firmware
+deb [trusted=yes] file:/mnt/DVD5 bookworm contrib main non-free-firmware
+deb [trusted=yes] file:/mnt/DVD6 bookworm contrib main non-free-firmware

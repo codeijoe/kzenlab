@@ -44,14 +44,14 @@ function set_grub(){
 
 	#apt install -yqq --no-install-recommends -o Dpkg::Options::="--force-confold" grub-pc
 	apt install -yqq --no-install-recommends \
-	grub-efi-amd64 grub-efi-amd64-signed refind efibootmgr efivar efitools
+	grub-efi-amd64 grub-efi-amd64-signed efibootmgr efivar efitools
 
 	set_devicemap $1
 	update-grub 
 }
 
 function set_uefi(){
-    grub-install --verbose --target=x86_64-efi $1 --bootloader-id=GRUB --modules=tpm --efi-directory=/boot/efi --boot-directory=/boot --uefi-secure-boot --removable && \
+    grub-install --verbose --target=x86_64-efi $1 --bootloader-id=GRUB --modules="tpm" --efi-directory=/boot/efi --boot-directory=/boot --uefi-secure-boot --removable && \
     update-grub
 	echo -e "SETTT UEFI.DONE ${1} "
 }

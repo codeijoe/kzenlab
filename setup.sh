@@ -45,6 +45,7 @@ _dvd4=default
 _dvd5=default
 _dvd6=default
 
+
 _loops=default
 
 ##### KZENLAB Functions #####
@@ -151,14 +152,66 @@ function unloop(){
 }
 
 function start_qemu_uefi(){
+	_dvdxfce=debian-live-12.8.0-amd64-xfce.iso
+	#-drive file=$_iso_home/$_dvdxfce,media=cdrom \
+	
 	_file=$_vm_name
 	_file+='.raw'
-	echo $_file
-	qemu-system-x86_64 -drive file=build/$_file,format=raw,if=virtio \
+	#echo $_file
+	qemu-system-x86_64 \
+	-m 2048M \
+	-drive file=build/$_file,format=raw,if=virtio \
 	-enable-kvm \
 	-bios /usr/share/OVMF/OVMF_CODE.fd \
-	-boot menu=on
+	-boot c
+	#-boot menu=on
 }
+
+function create_vmdk(){
+	rm -rf build/$_vm_name.vmdk && \
+	vboxmanage createmedium disk \
+	--filename build/$_vm_name'.vmdk' \
+	--format=VMDK \
+	--variant RawDisk \
+	--property RawDrive=$(losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+')
+}
+
+function create_vboxvm(){
+	# System
+	vboxmanage createvm --basefolder=$_vbox_home --name $_vm_name --register 
+	vboxmanage modifyvm $_vm_name --description "Klaudizen Lab"
+	vboxmanage modifyvm $_vm_name --memory=2048 --vram=128 --acpi=on --ioapic=on --cpus=2 --pae=on --long-mode=on
+	vboxmanage modifyvm $_vm_name --hwvirtex=on --paravirt-provider=kvm --nested-paging=on --nested-hw-virt=on
+	vboxmanage modifyvm $_vm_name --chipset=piix3
+	vboxmanage modifyvm $_vm_name --boot1=disk 
+	vboxmanage modifyvm $_vm_name --graphicscontroller vmsvga
+	vboxmanage modifyvm $_vm_name --tpm-type 2.0 
+	vboxmanage modifyvm $_vm_name --firmware efi64 
+	VBoxManage modifynvram $_vm_name inituefivarstore
+	vboxmanage modifynvram $_vm_name enrollmssignatures
+	vboxmanage modifynvram $_vm_name enrollorclpk
+
+	# Other
+	vboxmanage modifyvm $_vm_name --mouse=ps2 --keyboard=ps2   
+	vboxmanage modifyvm $_vm_name --uart1 0x3f8 4 --uart-type1=16550A --uart-mode1 server /tmp/vbox
+
+	# Network
+	vboxmanage modifyvm $_vm_name --nic1=nat --nic-type1=Am79C973 --cable-connected1=on
+	vboxmanage modifyvm $_vm_name --nat-pf1 "SSH,tcp,,2200,,22"
+	vboxmanage modifyvm $_vm_name --nat-pf1 "VNC,tcp,,15900,,5900"
+
+	# Storage
+	vboxmanage storagectl $_vm_name --name "SATA01" --add sata --controller IntelAHCI
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 1 --device 0 --type hdd --medium build/$_vm_name'.vmdk'
+
+	#vboxmanage showvminfo $VM_NAME
+	#vboxmanage startvm $VM_NAME -type headless
+	#vboxmanage startvm $VM_NAME -type gui
+	#vboxmanage controlvm $VM_NAME reset
+	#vboxmanage controlvm $VM_NAME poweroff
+}
+
+
 
 function unmount_linux(){
 
@@ -287,7 +340,7 @@ function mount_dvd(){
 	mount_dvd4 && \
 	mount_dvd5 && \
 	mount_dvd6 && \
-	sudo cp -f base-os/DVD.list /media/$USER/ijoe/etc/apt/sources.list.d/
+	sudo cp -f base-os/DVD.list /media/$USER/root/etc/apt/sources.list.d/
 }
 
 function unmount_dvd(){
@@ -297,7 +350,7 @@ function unmount_dvd(){
 	unmount_dvd4 && \
 	unmount_dvd5 && \
 	unmount_dvd6 && \
-	sudo rm -rf /media/$USER/ijoe/etc/apt/sources.list.d/DVD.list
+	sudo rm -rf /media/$USER/root/etc/apt/sources.list.d/DVD.list
 }
 
 function mount_dvd1(){
@@ -709,6 +762,12 @@ function parse_params() {
 				;;
 			--start-qemu-uefi)
 					start_qemu_uefi
+				;;
+			--create-vboxvm)
+					create_vboxvm
+				;;
+			--create-vmdk)
+					create_vmdk
 				;;
             --build-by-config)
 					build_empty_disk

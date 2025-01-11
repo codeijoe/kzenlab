@@ -22,42 +22,38 @@
 
 function set_locale(){
 	apt install locales -y && \
-	sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+	sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' etc/locale.gen && \
 	locale-gen
 }
 
 function set_kernel(){
-	apt install -yqq linux-image-amd64
+	apt install -yqq linux-image-amd64 linux-image-generic dkms 
+	set_locale
+	set_ssh_server
+	set_base_tools
+	#dpkg-reconfigure -f noninteractive tzdata 
 }
 
 function set_grub(){
-	#apt install -y --no-install-recommends -o Dpkg::Options::="--force-confold" grub-efi-amd64 \
-	#grub-efi-amd64-signed refind  \
-	#efibootmgr efivar efitools
+	echo -e "set_grub()>>>> $1"
 
-	#DEBIAN_FRONTEND=noninteractive apt install -y grub-efi-amd64-signed
-	#apt install -yqq --no-install-recommends -o Dpkg::Options::="--force-confold" grub-efi-amd64 \
-	# grub-efi-amd64-signed refind efibootmgr efivar efitools && \
-	# echo -e "SETTT GRUB.DONE"
-
-	echo -e "SETTT GRUB.DONE ${1} "
-
-	#apt install -yqq --no-install-recommends -o Dpkg::Options::="--force-confold" grub-pc
 	apt install -yqq --no-install-recommends \
-	grub-efi-amd64 grub-efi-amd64-signed efibootmgr efivar efitools
+	grub-efi-amd64 grub-efi-amd64-signed \
+	grub-efi-amd64-signed efibootmgr efivar \
+	efitools shim-signed
 
 	set_devicemap $1
 	update-grub 
 }
 
-function set_uefi(){
-    grub-install --verbose --target=x86_64-efi $1 --bootloader-id=GRUB --modules="tpm" --efi-directory=/boot/efi --boot-directory=/boot --uefi-secure-boot --removable && \
-    update-grub
-	echo -e "SETTT UEFI.DONE ${1} "
+function set_secure_boot(){
+	apt install -yqq debian-secure-boot
+    update-secureboot-policy --enroll-key /usr/share/debian-secure-boot/debian-secure-boot-ca.crt
 }
 
+
 function set_devicemap() {
-	echo -e ">>>> $1"
+	echo -e "set_devicemap()>>>> $1"
 	esp_uuid=$(blkid -s UUID -o value $1p1)
 	root_uuid=$(blkid -s UUID -o value $1p3)
  	
@@ -65,17 +61,89 @@ function set_devicemap() {
     echo -e "ESP UUID: $esp_uuid"
     echo -e "Root UUID: $root_uuid"
 
+    echo "UUID=$root_uuid / ext4 defaults,rw 0 1" > /etc/fstab
+
     cat << EOF > /boot/grub/device.map 
 (hd0)   $1
 
 EOF
 }
 
-#(hd0,gpt1) /dev/disk/by-uuid/$esp_uuid
-#(hd0,gpt3) /dev/disk/by-uuid/$root_uuid
+function set_uefi(){
+	# NEED VBOX TO TEST SECUREBOOT
+    grub-install --verbose --target=x86_64-efi $1 --bootloader-id=GRUB --modules="tpm" --efi-directory=/boot/efi --boot-directory=/boot --uefi-secure-boot --removable && \
+    update-grub
+	echo -e "SETTT UEFI.DONE ${1} "
+}
+
+function set_ssh_server(){
+	apt install -yqq openssh-server
+	#systemctl enable --now ssh
+}
+
+function set_os_default(){
+	echo ">>> ${1}"
+	echo "root:kzenlab" | chpasswd
+	useradd -m -s /bin/bash kzen
+	echo "kzen:kzenlab" | chpasswd
+	#hostnamectl set-hostname $1 
+}
+
+function set_base_tools(){
+	DEBIAN_FRONTEND=noninteractive apt install -yqq vim nano less wget curl git zsh
+
+	#DEBIAN_FRONTEND=noninteractive apt install -y xorg xserver-xorg xserver-xorg-core xserver-xorg-legacy x11-xserver-utils xserver-xorg-input-all -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+	 
+}
+
+function set_motd(){
+	cat << EOF > /etc/update-motd.d/00-header
+#!/bin/sh
+export TERM=linux
+clear
+printf "\n"
+printf "'##:::'##:'########:'########:'##::: ##:'##::::::::::'###::::'########::\n"
+printf " ##::'##::..... ##:: ##.....:: ###:: ##: ##:::::::::'## ##::: ##.... ##:\n"
+printf " ##:'##::::::: ##::: ##::::::: ####: ##: ##::::::::'##:. ##:: ##:::: ##:\n"
+printf " #####::::::: ##:::: ######::: ## ## ##: ##:::::::'##:::. ##: ########::\n"
+printf " ##. ##::::: ##::::: ##...:::: ##. ####: ##::::::: #########: ##.... ##:\n"
+printf " ##:. ##::: ##:::::: ##::::::: ##:. ###: ##::::::: ##.... ##: ##:::: ##:\n"
+printf " ##::. ##: ########: ########: ##::. ##: ########: ##:::: ##: ########::\n"
+printf "..::::..::........::........::..::::..::........::..:::::..::........:::\n"
+printf "Ver 0.1.5-SNAPSHOT Codeijoe (c)2024. Indra Wahjoedi<indra.wahjoedi@gmail.com>\n"
+printf "Kzenlab is pronounced as "kei-zen-lab"\n"
+printf "Provide by @itwahjoedi to support Codeijoe Open Mentorship\n"
+printf "\n"
+EOF
+
+	chmod +x /etc/update-motd.d/00-header
+}
 
 
 
 #grub-install --verbose --target=x86_64-efi ${DEV_LOOPS} --bootloader-id=GRUB --modules=tpm --efi-directory=${PART_EFI} --boot-directory=${PART_EFI}/BOOT --uefi-secure-boot --removable 
 #COMMAND bash -c "sudo grub-install --target=x86_64-efi `grep -oP '\/[A-Za-z0-9]+' ${LOG_LOOPS}` --bootloader-id=GRUB --modules=tpm --efi-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}` --boot-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}`/EFI/BOOT --uefi-secure-boot --removable"
 
+function wawa(){
+apt install -yqq xorg xserver-xorg xserver-xorg-core xserver-xorg-legacy x11-xserver-utils xserver-xorg-input-all 
+cat << EOF
+# Minimal X11
+-- Install with DVD
+apt install -y xorg xserver-xorg xserver-xorg-core xserver-xorg-legacy x11-xserver-utils xserver-xorg-input-all 
+apt install -y xserver-xorg-video-all x11-xkb-utils x11-utils xinit network-manager 
+apt install -y xterm inxi screen lightdm 
+apt install -y xserver-xorg-video-fbdev xserver-xorg-video-vmware python3-xdg dbus-x11 
+
+# Require Tools
+----- Tools
+apt install -y zsh htop
+apt build-essential zlib1g-dev
+
+-- install with REPO
+!!apt install -y xbacklight xbindkeys xvkbd xinput x11vnc minicom (77MB)
+!!apt install -y xserver-xorg-video-dummy  xserver-xorg-video-cirrus (62KB)
+
+
+EOF
+
+}

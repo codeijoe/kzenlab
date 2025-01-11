@@ -150,3 +150,29 @@ chroot $CHROOT_DIR /bin/bash
 ```
 
 
+--- MOTD
+
+cat << EOF > /etc/update-motd.d/00-header
+#!/bin/sh
+export TERM=linux
+clear
+printf "\n"
+printf "'##:::'##:'########:'########:'##::: ##:'##::::::::::'###::::'########::\n"
+printf " ##::'##::..... ##:: ##.....:: ###:: ##: ##:::::::::'## ##::: ##.... ##:\n"
+printf " ##:'##::::::: ##::: ##::::::: ####: ##: ##::::::::'##:. ##:: ##:::: ##:\n"
+printf " #####::::::: ##:::: ######::: ## ## ##: ##:::::::'##:::. ##: ########::\n"
+printf " ##. ##::::: ##::::: ##...:::: ##. ####: ##::::::: #########: ##.... ##:\n"
+printf " ##:. ##::: ##:::::: ##::::::: ##:. ###: ##::::::: ##.... ##: ##:::: ##:\n"
+printf " ##::. ##: ########: ########: ##::. ##: ########: ##:::: ##: ########::\n"
+printf "..::::..::........::........::..::::..::........::..:::::..::........:::\n"
+printf "Ver 0.1.5-SNAPSHOT Tathir (c)2024. Indra Wahjoedi<indra.wahjoedi@tathir.xyz>\n"
+printf "Kzenlab is pronounced as "kei-zen-lab"\n"
+printf "Provide by Tathir to support Bimbel Informatika Klaudizen\n"
+printf "\n"
+EOF
+
+chmod +x /etc/update-motd.d/00-header
+rm /etc/update-motd.d/10-uname
+rm /etc/motd
+
+

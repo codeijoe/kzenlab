@@ -1,2 +1,0 @@
-# Debian 12 Bookwork DVD 1
-deb [trusted=yes] file:/mnt/DVD1 bookworm contrib main non-free-firmware

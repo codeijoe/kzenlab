@@ -44,7 +44,10 @@ set(VM_HYPER_TYPE "VBOX" CACHE STRING "VM Hypervisor type")
 set(VM_NAME "KZENLAB" CACHE STRING "VM Name")
 set(VM_DOMAIN "codeijoe.org" CACHE STRING "VM Domain")
 set(VM_HOSTNAME "kzenlab" CACHE STRING "VM Hostname")
-set(VM_DISK_SIZE "0" CACHE STRING "VM Disk size")
+set(VM_DISK_SIZE "default" CACHE STRING "VM Disk size")
+set(DISK_EFI "default" CACHE STRING "Disk EFI partition size")
+set(DISK_SWAP "default" CACHE STRING "Disk SWAP partition size")
+set(DISK_ROOT "default" CACHE STRING "Disk ROOT partition size")
 
 #### ISO
 set(ISO_HOME "/home/ijoe/ISO/LINUX/DEBIAN" CACHE STRING "ISO DEBIAN Directory")

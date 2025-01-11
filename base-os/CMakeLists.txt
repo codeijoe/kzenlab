@@ -100,11 +100,6 @@ add_custom_target(
 add_custom_target(
     set_uefi_boot
 
-    ### CAUTION INSTALL GRUB INSIDE CHROOT STRONG RECOMENDED
-    ## 1 install grub 
-    ## 2 set
-    ## 3 test using QEMU
-
     COMMAND bash -c "echo SET_UEFI_BOOT $VM_HOSTNAME"
 
 	#COMMAND bash -c "sudo grub-install --target=x86_64-efi `grep -oP '\/[A-Za-z0-9]+' ${LOG_LOOPS}` --bootloader-id=GRUB --modules=tpm --efi-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}` --boot-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}`/EFI/BOOT --uefi-secure-boot --removable"
@@ -119,8 +114,6 @@ add_custom_target(
 
 	#COMMAND grub-install --target=x86_64-efi --efi-directory=${} --boot-directory=/mnt/efi/boot --removable ${LOG_LOOPS}
 
-	## CANNOT SET UEFI ON BIOS DEVICE
-	## YOU SHOULD RUN IT ON QEMU
     COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_uefi \'${DEV_LOOPS}\' '"
 
     DEPENDS ${SET_EFI_MOUNT}
@@ -130,41 +123,10 @@ add_custom_target(
     VERBATIM
 )
 
-add_custom_command(
-	OUTPUT ${SET_EFI_MOUNT}
-
-	#COMMAND bash -c "sudo echo ${DEV_LOOPS}p1 '&&' ${PATH_ROOT}/boot/efi"
-
-	COMMAND bash -c "sudo mkdir -p ${PATH_ROOT}/boot/efi"
-
-	# Mounting EFI
-    COMMAND bash -c "sudo mount ${DEV_LOOPS}p1 ${PATH_ROOT}/boot/efi" &> ${SET_EFI_MOUNT}
-
-	DEPENDS ${SET_APT}
-    DEPENDS ${LOG_ROOT}
-	COMMENT "Mouting EFI for UEFI Grub "
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
- 	VERBATIM
-)
-add_custom_command(
-	OUTPUT ${SET_GRUB}
-    COMMAND bash -c "echo SET_GRUB: ${DEV_LOOPS}p1 '||' ${PATH_ROOT}/boot/efi"
-
-    # Set Device MAP
-    #COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_devicemap \'${DEV_LOOPS}\' '"
-
-    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_grub \'${DEV_LOOPS}\' '" &> ${SET_GRUB}
-
-	DEPENDS ${SET_APT}
-    DEPENDS ${LOG_ROOT}
-	COMMENT "Installing and setting grub "
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
- 	VERBATIM
-)
 
 add_custom_target(
     set_kernel
-    DEPENDS KERNEL_SETUP
+    DEPENDS SET_KERNEL
     DEPENDS ${SET_APT}
     COMMENT "Setting kernel to debian base"
     VERBATIM
@@ -223,11 +185,13 @@ add_custom_target(
 ############### COMMAND ###############
 
 add_custom_command(
-	OUTPUT KERNEL_SETUP
+	OUTPUT SET_KERNEL
 
-    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_kernel'"
+    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_kernel'" &> SET_KERNEL
 
-    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_locale'"
+    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_os_default \'${VM_HOSTNAME}\' '" &> SET_KERNEL
+
+    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_motd'" &> SET_KERNEL
 
 	DEPENDS ${SET_APT}
     DEPENDS ${LOG_ROOT}
@@ -248,12 +212,49 @@ add_custom_command(
 
     COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/base-os.sh ${CHROOT_DIR}/root && sudo chmod +x ${CHROOT_DIR}/root/base-os.sh" &> ${SET_APT}
 
+    COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/add-dvd.sh ${CHROOT_DIR}/root && sudo chmod +x ${CHROOT_DIR}/root/add-dvd.sh" &> ${SET_APT}
+
     COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} apt update"
 
     DEPENDS ${LOG_ROOT}
 	COMMENT "Setting APT and Locale..."
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
  	VERBATIM
+)
+
+add_custom_command(
+    OUTPUT ${SET_EFI_MOUNT}
+
+    #COMMAND bash -c "sudo echo ${DEV_LOOPS}p1 '&&' ${PATH_ROOT}/boot/efi"
+
+    COMMAND bash -c "sudo mkdir -p ${PATH_ROOT}/boot/efi"
+
+    # Mounting EFI
+    COMMAND bash -c "sudo mount ${DEV_LOOPS}p1 ${PATH_ROOT}/boot/efi" &> ${SET_EFI_MOUNT}
+
+    DEPENDS ${SET_APT}
+    DEPENDS ${LOG_ROOT}
+    COMMENT "Mouting EFI for UEFI Grub "
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    VERBATIM
+)
+add_custom_command(
+    OUTPUT ${SET_GRUB}
+    COMMAND bash -c "echo SET_GRUB: ${DEV_LOOPS}p1 '||' ${PATH_ROOT}/boot/efi"
+
+    # Install GRUB
+    #COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c 'apt install -yqq --no-install-recommends grub-efi-amd64 grub-efi-amd64-signed grub-efi-amd64-signed efibootmgr efivar efitools shim-signed debian-secure-boot'"
+
+    # Set Device MAP
+    #COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_devicemap \'${DEV_LOOPS}\' '"
+
+    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_grub \'${DEV_LOOPS}\' '" &> ${SET_GRUB}
+
+    DEPENDS ${SET_APT}
+    DEPENDS ${LOG_ROOT}
+    COMMENT "Installing and setting grub "
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    VERBATIM
 )
 
 ######################################

@@ -165,9 +165,9 @@ add_custom_target(
 ######################################
 add_custom_command(
     OUTPUT ${RAWDISK}
-    COMMAND ${FALLO_PATH} -l 2GiB ${RAWDISK}
-    COMMAND ${PARTED_PATH} -s -a optimal ${RAWDISK} mklabel gpt mkpart primary fat32 1MiB 270MiB name 1 uefi mkpart primary linux-swap 270MiB 500MiB name 2 swap mkpart primary ext4 500MiB 2000MiB name 3 root set 1 esp on
-    COMMENT "2 GB RAW disk created for ${VM_NAME} then create partition..."
+    COMMAND ${FALLO_PATH} -l ${VM_DISK_SIZE} ${RAWDISK}
+    COMMAND ${PARTED_PATH} -s -a optimal ${RAWDISK} mklabel gpt mkpart primary fat32 1MiB ${DISK_EFI} name 1 uefi mkpart primary linux-swap ${DISK_EFI} ${DISK_SWAP} name 2 swap mkpart primary ext4 ${DISK_SWAP} ${DISK_ROOT} name 3 root set 1 esp on
+    COMMENT "RAW disk created for ${VM_NAME} then create partition..."
     VERBATIM
 )
 

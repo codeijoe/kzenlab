@@ -1,22 +1,22 @@
 #!/bin/bash
-
-# DESC: Define Script Debugging
-# Enable xtrace if the DEBUG environment variable is set
-if [[ ${DEBUG-} =~ ^1|yes|true$ ]]; then
-    set -o xtrace       # Trace the execution of the script (debug)
-fi
-
-# Only enable these shell behaviours if we're not being sourced
-# Approach via: https://stackoverflow.com/a/28776166/8787985
-if ! (return 0 2> /dev/null); then
-    # A better class of script...
-    set -o errexit      # Exit on most errors (see the manual)
-    set -o nounset      # Disallow expansion of unset variables
-    set -o pipefail     # Use last non-zero exit code in a pipeline
-fi
-
-# Enable errtrace or the error trap handler will not work as expected
-set -o errtrace         # Ensure the error trap handler is inherited
+######################################
+# Kzenlab Builder  
+# Copyright (C) 2024  Indra Wahjoedi<indra.wahjoedi@gmail.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+######################################
 
 # DESC: Define Common Vars 
 LANG=en_US.UTF-8
@@ -38,6 +38,9 @@ _vm_domain=default
 _vm_hostname=default
 _hyper_type=default
 _vm_disk_size=default
+_disk_efi=default
+_disk_swap=default
+_disk_root=default
 _dvd1=default
 _dvd2=default
 _dvd3=default
@@ -45,10 +48,32 @@ _dvd4=default
 _dvd5=default
 _dvd6=default
 
-
+## Local VARS
 _loops=default
+_verbose=""
 
-##### KZENLAB Functions #####
+
+
+##### Functions #####
+
+# DESC: Define Script Debugging
+# Enable xtrace if the DEBUG environment variable is set
+if [[ ${DEBUG-} =~ ^1|yes|true$ ]]; then
+    set -o xtrace       # Trace the execution of the script (debug)
+    _verbose=--verbose
+fi
+
+# Only enable these shell behaviours if we're not being sourced
+# Approach via: https://stackoverflow.com/a/28776166/8787985
+if ! (return 0 2> /dev/null); then
+    # A better class of script...
+    set -o errexit      # Exit on most errors (see the manual)
+    set -o nounset      # Disallow expansion of unset variables
+    set -o pipefail     # Use last non-zero exit code in a pipeline
+fi
+
+# Enable errtrace or the error trap handler will not work as expected
+set -o errtrace         # Ensure the error trap handler is inherited
 
 # DESC: Import external .env file to script
 # ARGS: None
@@ -71,6 +96,9 @@ function import_env() {
     _vm_hostname=$(grep -F -- "VM_HOSTNAME" .env | cut -d'=' -f2)
     _vm_domain=$(grep -F -- "VM_DOMAIN" .env | cut -d'=' -f2)
     _vm_disk_size=$(grep -F -- "VM_DISK_SIZE" .env | cut -d'=' -f2)
+    _disk_root=$(grep -F -- "DISK_ROOT" .env | cut -d'=' -f2)
+    _disk_swap=$(grep -F -- "DISK_SWAP" .env | cut -d'=' -f2)
+    _disk_efi=$(grep -F -- "DISK_EFI" .env | cut -d'=' -f2)
 }
 
 
@@ -91,7 +119,10 @@ function setup_cmake(){
 -DVM_DISK_SIZE=$_vm_disk_size \
 -DVM_NAME=$_vm_name \
 -DVM_HOSTNAME=$_vm_hostname \
--DVM_DOMAIN=$_vm_domain
+-DVM_DOMAIN=$_vm_domain \
+-DDISK_EFI=$_disk_efi \
+-DDISK_SWAP=$_disk_swap \
+-DDISK_ROOT=$_disk_root 
 	cmake --build build --target check_tools
 	cmake --build build --target print_vm_env
 	cmake --build build --target write_vm_env
@@ -113,9 +144,9 @@ function clean_cmake(){
 # ARGS: None
 # OUTS: None
 # RETS: None
-function create_raw_disk(){
-    cmake --build build --target create_raw_disk && \
-    cmake --build build --target mounting_raw_disk
+function build_raw_disk(){
+    cmake --build build --target create_raw_disk $_verbose && \
+    cmake --build build --target mounting_raw_disk $_verbose
 }
 
 function download_debian9(){
@@ -131,24 +162,26 @@ function unpack_debian9(){
 }
 
 function unpack_debian12(){
-	cmake --build build --target unpack_debian12
+	cmake --build build --target unpack_debian12 $_verbose
 }
 
 function unloop(){
+    echo "UNLOOP()"
 	# Unloop RAWDISK
-    _loops=$(losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+' )
+    _devloop=$(losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+' )
 
-    losetup -d $_loops 
-    if [ $? -ne 0 ]; then
-    	echo "Error unloop..."
+    echo $_devloop
+
+    if [[ -n "$_devloop" ]]; then
+    	losetup -d $_devloop
+    	if [ $? -ne 0 ]; then
+    		echo "Error unloop..."
+    	else
+	    	echo $_devloop" unloopped"
+		fi
     else
-	    echo $_loops" unloopped"
+	    echo "Loop device already unloopped"
 	fi
-
-    #echo $_loops | xargs -I {} losetup -d {}
-	#losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+' \
-	#| xargs -I {} losetup -d {}
-
 }
 
 function start_qemu_uefi(){
@@ -168,17 +201,20 @@ function start_qemu_uefi(){
 }
 
 function create_vmdk(){
-	rm -rf build/$_vm_name.vmdk && \
+	_devloop=$(losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+')
+	echo $_devloop 
+	#vboxmanage closemedium disk build/$_vm_name'.vmdk'
+	rm -rf build\$_vm_name'.vmdk'
 	vboxmanage createmedium disk \
 	--filename build/$_vm_name'.vmdk' \
 	--format=VMDK \
 	--variant RawDisk \
-	--property RawDrive=$(losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+')
+	--property RawDrive=$_devloop
 }
 
 function create_vboxvm(){
 	# System
-	vboxmanage createvm --basefolder=$_vbox_home --name $_vm_name --register 
+	vboxmanage createvm --basefolder=$_vbox_vm_home --name $_vm_name --register 
 	vboxmanage modifyvm $_vm_name --description "Klaudizen Lab"
 	vboxmanage modifyvm $_vm_name --memory=2048 --vram=128 --acpi=on --ioapic=on --cpus=2 --pae=on --long-mode=on
 	vboxmanage modifyvm $_vm_name --hwvirtex=on --paravirt-provider=kvm --nested-paging=on --nested-hw-virt=on
@@ -202,8 +238,16 @@ function create_vboxvm(){
 
 	# Storage
 	vboxmanage storagectl $_vm_name --name "SATA01" --add sata --controller IntelAHCI
-	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 1 --device 0 --type hdd --medium build/$_vm_name'.vmdk'
 
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 0 --device 0 --type hdd --medium build/$_vm_name'.vmdk'
+
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 1 --device 0 --type dvddrive --medium $_iso_home/$_dvd2
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 2 --device 0 --type dvddrive --medium $_iso_home/$_dvd3
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 3 --device 0 --type dvddrive --medium $_iso_home/$_dvd4
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 4 --device 0 --type dvddrive --medium $_iso_home/$_dvd5
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 5 --device 0 --type dvddrive --medium $_iso_home/$_dvd6
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 6 --device 0 --type dvddrive --medium $_iso_home/$_dvd1
+	
 	#vboxmanage showvminfo $VM_NAME
 	#vboxmanage startvm $VM_NAME -type headless
 	#vboxmanage startvm $VM_NAME -type gui
@@ -211,6 +255,9 @@ function create_vboxvm(){
 	#vboxmanage controlvm $VM_NAME poweroff
 }
 
+function remove_vboxvm(){
+	vboxmanage unregistervm $_vm_name --delete
+}
 
 
 function unmount_linux(){
@@ -220,10 +267,6 @@ function unmount_linux(){
 		mount | grep ${USER}'/root/dev' | cut -d' ' -f3 | sort -r | xargs -I {} sudo umount {}
     	echo "/root/dev unmounted"
 	fi
-	#if mount | grep -q "on /media/$USER/root/dev "; then
-    #	sudo umount /media/$USER/root/dev
-    #	echo "/root/dev unmounted"
-	#fi
 	if ! mount | grep -q "on /media/$USER/root/dev "; then
     	rm -rf build/log/linux-dev
 	fi
@@ -263,10 +306,6 @@ function unmount_linux(){
 		mount | grep ${USER}'/root/run' | cut -d' ' -f3 | sort -r | xargs -I {} sudo umount {}
     	echo "/root/run unmounted"
 	fi
-	#if mount | grep -q "on /media/$USER/root/run "; then
-    #	sudo umount /media/$USER/root/run
-    #	echo "/root/run unmounted"
-	#fi
 	if ! mount | grep -q "on /media/$USER/root/run "; then
     	rm -rf build/log/linux-run
 	fi
@@ -483,53 +522,22 @@ function unmount_dvd6(){
 
 function set_base_os(){
     unpack_debian12 && \
-	cmake --build build --target mounting_linux && \
-	cmake --build build --target chroot_debian
+	cmake --build build --target mounting_linux $_verbose && \
+	cmake --build build --target chroot_debian $_verbose
 }
 
 function set_kernel(){
 	if [ ! -d "/mnt/DVD1" ]; then
     	echo "Mount DVD1 before installing some packages."
     else
-		cmake --build build --target set_kernel 
+		cmake --build build --target set_kernel $_verbose
 	fi
 }
 
 function set_uefi_boot(){
-	cmake --build build --target set_uefi_boot --verbose
+	cmake --build build --target set_uefi_boot $_verbose
 }
 
-# DESC: Demolish empty virtual disk
-# ARGS: None
-# OUTS: None
-# RETS: None
-function demolish_disk(){
-	cmake --build build --target demolish_empty_vbox_4gb
-}
-
-
-# DESC: Setup partition for virtual disk
-# ARGS: None
-# OUTS: None
-# RETS: None
-function build_partition(){
-    case $_hyper_type in
-    	"VBOX")
-			# cmake --build build --target build_empty_vbox_${_vm_disk_size}gb
-			# cmake --build build --target check_tools
-			setup_cmake
-			part_setup
-		;;
-    	"QEMU")
-			echo -n "QEMU matched"
-		;;
-	esac
-}
-
-function part_setup(){
-	cmake --build build --target check_tools
-	cmake --build build --target partition_setup
-}
 
 function check_qemu(){
 	echo -e "-- Checking QEMU Path ${QEMU_PATH}"
@@ -725,7 +733,7 @@ function parse_params() {
 				setup_cmake
                 ;;
             -br | --build-raw)
-					create_raw_disk
+					build_raw_disk
 				;;
 	   	    -d9|--download-debian9)
 					download_debian9
@@ -768,6 +776,9 @@ function parse_params() {
 				;;
 			--create-vmdk)
 					create_vmdk
+				;;
+			--remove-vboxvm)
+					remove_vboxvm
 				;;
             --build-by-config)
 					build_empty_disk

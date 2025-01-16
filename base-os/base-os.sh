@@ -21,7 +21,7 @@
 #!/bin/bash
 
 function set_locale(){
-	apt install locales -y && \
+	apt install locales -yqq && \
 	sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' etc/locale.gen && \
 	locale-gen
 }
@@ -29,13 +29,13 @@ function set_locale(){
 function set_kernel(){
 	apt install -yqq linux-image-amd64 linux-image-generic dkms 
 	set_locale
-	set_ssh_server
-	set_base_tools
+	# set_ssh_server
+	# set_base_tools
 	#dpkg-reconfigure -f noninteractive tzdata 
 }
 
 function set_grub(){
-	echo -e "set_grub()>>>> $1"
+	#echo -e "set_grub()>>>> $1"
 
 	apt install -yqq --no-install-recommends \
 	grub-efi-amd64 grub-efi-amd64-signed \
@@ -43,6 +43,8 @@ function set_grub(){
 	efitools shim-signed
 
 	set_devicemap $1
+	sed -i 's/\(GRUB_CMDLINE_LINUX_DEFAULT=\"\).*/\1console=tty0 console=ttyS0,115200n8"/' /etc/default/grub
+
 	update-grub 
 }
 
@@ -50,7 +52,6 @@ function set_secure_boot(){
 	apt install -yqq debian-secure-boot
     update-secureboot-policy --enroll-key /usr/share/debian-secure-boot/debian-secure-boot-ca.crt
 }
-
 
 function set_devicemap() {
 	echo -e "set_devicemap()>>>> $1"
@@ -73,7 +74,7 @@ function set_uefi(){
 	# NEED VBOX TO TEST SECUREBOOT
     grub-install --verbose --target=x86_64-efi $1 --bootloader-id=GRUB --modules="tpm" --efi-directory=/boot/efi --boot-directory=/boot --uefi-secure-boot --removable && \
     update-grub
-	echo -e "SETTT UEFI.DONE ${1} "
+	#echo -e "SETTT UEFI.DONE ${1} "
 }
 
 function set_ssh_server(){
@@ -82,7 +83,7 @@ function set_ssh_server(){
 }
 
 function set_os_default(){
-	echo ">>> ${1}"
+	#echo ">>> ${1}"
 	echo "root:kzenlab" | chpasswd
 	useradd -m -s /bin/bash kzen
 	echo "kzen:kzenlab" | chpasswd
@@ -119,10 +120,6 @@ EOF
 	chmod +x /etc/update-motd.d/00-header
 }
 
-
-
-#grub-install --verbose --target=x86_64-efi ${DEV_LOOPS} --bootloader-id=GRUB --modules=tpm --efi-directory=${PART_EFI} --boot-directory=${PART_EFI}/BOOT --uefi-secure-boot --removable 
-#COMMAND bash -c "sudo grub-install --target=x86_64-efi `grep -oP '\/[A-Za-z0-9]+' ${LOG_LOOPS}` --bootloader-id=GRUB --modules=tpm --efi-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}` --boot-directory=`grep -oP '\/[A-Za-z0-9]+' ${LOG_EFI}`/EFI/BOOT --uefi-secure-boot --removable"
 
 function wawa(){
 apt install -yqq xorg xserver-xorg xserver-xorg-core xserver-xorg-legacy x11-xserver-utils xserver-xorg-input-all 

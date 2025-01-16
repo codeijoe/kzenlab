@@ -47,8 +47,24 @@ _dvd3=default
 _dvd4=default
 _dvd5=default
 _dvd6=default
+_dvd7=default
+_dvd8=default
+_dvd9=default
+_dvd10=default
+_dvd11=default
+_dvd12=default
+_dvd13=default
+_dvd14=default
+_dvd15=default
+_dvd16=default
+_dvd17=default
+_dvd18=default
+_dvd19=default
+_dvd20=default
+_dvd21=default
 
 ## Local VARS
+_device=default
 _loops=default
 _verbose=""
 
@@ -81,12 +97,27 @@ set -o errtrace         # Ensure the error trap handler is inherited
 # RETS: None
 function import_env() {
 	_iso_home=$(grep -F -- "ISO_HOME" .env | cut -d'=' -f2)
-	_dvd1=$(grep -F -- "DVD1" .env | cut -d'=' -f2)
-	_dvd2=$(grep -F -- "DVD2" .env | cut -d'=' -f2)
-	_dvd3=$(grep -F -- "DVD3" .env | cut -d'=' -f2)
-	_dvd4=$(grep -F -- "DVD4" .env | cut -d'=' -f2)
-	_dvd5=$(grep -F -- "DVD5" .env | cut -d'=' -f2)
-	_dvd6=$(grep -F -- "DVD6" .env | cut -d'=' -f2)
+	_dvd1=$(grep -F -- "DVD_01" .env | cut -d'=' -f2)
+	_dvd2=$(grep -F -- "DVD_02" .env | cut -d'=' -f2)
+	_dvd3=$(grep -F -- "DVD_03" .env | cut -d'=' -f2)
+	_dvd4=$(grep -F -- "DVD_04" .env | cut -d'=' -f2)
+	_dvd5=$(grep -F -- "DVD_05" .env | cut -d'=' -f2)
+	_dvd6=$(grep -F -- "DVD_06" .env | cut -d'=' -f2)
+	_dvd7=$(grep -F -- "DVD_07" .env | cut -d'=' -f2)
+	_dvd8=$(grep -F -- "DVD_08" .env | cut -d'=' -f2)
+	_dvd9=$(grep -F -- "DVD_09" .env | cut -d'=' -f2)
+	_dvd10=$(grep -F -- "DVD_10" .env | cut -d'=' -f2)
+	_dvd11=$(grep -F -- "DVD_11" .env | cut -d'=' -f2)
+	_dvd12=$(grep -F -- "DVD_12" .env | cut -d'=' -f2)
+	_dvd13=$(grep -F -- "DVD_13" .env | cut -d'=' -f2)
+	_dvd14=$(grep -F -- "DVD_14" .env | cut -d'=' -f2)
+	_dvd15=$(grep -F -- "DVD_15" .env | cut -d'=' -f2)
+	_dvd16=$(grep -F -- "DVD_16" .env | cut -d'=' -f2)
+	_dvd17=$(grep -F -- "DVD_17" .env | cut -d'=' -f2)
+	_dvd18=$(grep -F -- "DVD_18" .env | cut -d'=' -f2)
+	_dvd19=$(grep -F -- "DVD_19" .env | cut -d'=' -f2)
+	_dvd20=$(grep -F -- "DVD_20" .env | cut -d'=' -f2)
+	_dvd21=$(grep -F -- "DVD_21" .env | cut -d'=' -f2)
     _qemu_home=$(grep -F -- "QEMU_HOME" .env | cut -d'=' -f2)
     _vbox_home=$(grep -F -- "VBOX_HOME" .env | cut -d'=' -f2)
     _vbox_vm_home=$(grep -F -- "VBOX_VM_HOME" .env | cut -d'=' -f2)
@@ -99,6 +130,7 @@ function import_env() {
     _disk_root=$(grep -F -- "DISK_ROOT" .env | cut -d'=' -f2)
     _disk_swap=$(grep -F -- "DISK_SWAP" .env | cut -d'=' -f2)
     _disk_efi=$(grep -F -- "DISK_EFI" .env | cut -d'=' -f2)
+
 }
 
 
@@ -204,13 +236,56 @@ function create_vmdk(){
 	_devloop=$(losetup -a | grep $_vm_name | cut -d' ' -f1 | grep -oE '/dev/loop[0-9]+')
 	echo $_devloop 
 	#vboxmanage closemedium disk build/$_vm_name'.vmdk'
-	rm -rf build\$_vm_name'.vmdk'
+	rm -rf build/$_vm_name'.vmdk'
 	vboxmanage createmedium disk \
 	--filename build/$_vm_name'.vmdk' \
 	--format=VMDK \
 	--variant RawDisk \
 	--property RawDrive=$_devloop
 }
+
+function create_usb_vmdk(){
+	_device=$1
+	echo $_device 
+	rm -rf build/usb.vmdk
+	vboxmanage createmedium disk \
+	--filename build/usb.vmdk \
+	--format=VMDK \
+	--variant RawDisk \
+	--property RawDrive=$_device
+}
+
+function create_usb_vboxvm(){
+	# System
+	_vm_name="USB-OS"
+	vboxmanage createvm --basefolder=$_vbox_vm_home --name $_vm_name --register 
+	vboxmanage modifyvm $_vm_name --description "Klaudizen Lab"
+	vboxmanage modifyvm $_vm_name --memory=2048 --vram=128 --acpi=on --ioapic=on --cpus=2 --pae=on --long-mode=on
+	vboxmanage modifyvm $_vm_name --hwvirtex=on --paravirt-provider=kvm --nested-paging=on --nested-hw-virt=on
+	vboxmanage modifyvm $_vm_name --chipset=piix3
+	#vboxmanage modifyvm $_vm_name --boot1=disk 
+	vboxmanage modifyvm $_vm_name --graphicscontroller vmsvga
+	vboxmanage modifyvm $_vm_name --tpm-type 2.0 
+	vboxmanage modifyvm $_vm_name --firmware efi64 
+	VBoxManage modifynvram $_vm_name inituefivarstore
+	vboxmanage modifynvram $_vm_name enrollmssignatures
+	vboxmanage modifynvram $_vm_name enrollorclpk
+
+	# Other
+	vboxmanage modifyvm $_vm_name --mouse=ps2 --keyboard=ps2   
+	vboxmanage modifyvm $_vm_name --uart1 0x3f8 4 --uart-type1=16550A --uart-mode1 server /tmp/vbox
+
+	# Network
+	vboxmanage modifyvm $_vm_name --nic1=nat --nic-type1=Am79C973 --cable-connected1=on
+	vboxmanage modifyvm $_vm_name --nat-pf1 "SSH,tcp,,2200,,22"
+	vboxmanage modifyvm $_vm_name --nat-pf1 "VNC,tcp,,15900,,5900"
+
+	# Storage
+	vboxmanage storagectl $_vm_name --name "SATA01" --add sata --controller IntelAHCI
+
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 0 --device 0 --type hdd --medium build/usb.vmdk
+}
+
 
 function create_vboxvm(){
 	# System
@@ -219,7 +294,7 @@ function create_vboxvm(){
 	vboxmanage modifyvm $_vm_name --memory=2048 --vram=128 --acpi=on --ioapic=on --cpus=2 --pae=on --long-mode=on
 	vboxmanage modifyvm $_vm_name --hwvirtex=on --paravirt-provider=kvm --nested-paging=on --nested-hw-virt=on
 	vboxmanage modifyvm $_vm_name --chipset=piix3
-	vboxmanage modifyvm $_vm_name --boot1=disk 
+	#vboxmanage modifyvm $_vm_name --boot1=disk 
 	vboxmanage modifyvm $_vm_name --graphicscontroller vmsvga
 	vboxmanage modifyvm $_vm_name --tpm-type 2.0 
 	vboxmanage modifyvm $_vm_name --firmware efi64 
@@ -241,12 +316,32 @@ function create_vboxvm(){
 
 	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 0 --device 0 --type hdd --medium build/$_vm_name'.vmdk'
 
-	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 1 --device 0 --type dvddrive --medium $_iso_home/$_dvd2
-	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 2 --device 0 --type dvddrive --medium $_iso_home/$_dvd3
-	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 3 --device 0 --type dvddrive --medium $_iso_home/$_dvd4
-	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 4 --device 0 --type dvddrive --medium $_iso_home/$_dvd5
-	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 5 --device 0 --type dvddrive --medium $_iso_home/$_dvd6
-	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 6 --device 0 --type dvddrive --medium $_iso_home/$_dvd1
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 1 --device 0 --type dvddrive --medium $_iso_home/$_dvd1
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 2 --device 0 --type dvddrive --medium $_iso_home/$_dvd2
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 3 --device 0 --type dvddrive --medium $_iso_home/$_dvd3
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 4 --device 0 --type dvddrive --medium $_iso_home/$_dvd4
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 5 --device 0 --type dvddrive --medium $_iso_home/$_dvd5
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 6 --device 0 --type dvddrive --medium $_iso_home/$_dvd6
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 7 --device 0 --type dvddrive --medium $_iso_home/$_dvd7
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 8 --device 0 --type dvddrive --medium $_iso_home/$_dvd8
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 9 --device 0 --type dvddrive --medium $_iso_home/$_dvd9
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 10 --device 0 --type dvddrive --medium $_iso_home/$_dvd10
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 11 --device 0 --type dvddrive --medium $_iso_home/$_dvd11
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 12 --device 0 --type dvddrive --medium $_iso_home/$_dvd12
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 13 --device 0 --type dvddrive --medium $_iso_home/$_dvd13
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 14 --device 0 --type dvddrive --medium $_iso_home/$_dvd14
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 15 --device 0 --type dvddrive --medium $_iso_home/$_dvd15
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 16 --device 0 --type dvddrive --medium $_iso_home/$_dvd16
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 17 --device 0 --type dvddrive --medium $_iso_home/$_dvd17
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 18 --device 0 --type dvddrive --medium $_iso_home/$_dvd18
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 19 --device 0 --type dvddrive --medium $_iso_home/$_dvd19
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 20 --device 0 --type dvddrive --medium $_iso_home/$_dvd20
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 21 --device 0 --type dvddrive --medium $_iso_home/$_dvd21
+
+	# Must detach dvd1 otherwise boot will go to DVD1
+	vbox_dettach_dvd1
+	
+	#vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 1 --device 0 --type dvddrive --medium none
 	
 	#vboxmanage showvminfo $VM_NAME
 	#vboxmanage startvm $VM_NAME -type headless
@@ -255,7 +350,25 @@ function create_vboxvm(){
 	#vboxmanage controlvm $VM_NAME poweroff
 }
 
+function vbox_attach_dvd1(){
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 1 --device 0 --type dvddrive --medium $_iso_home/$_dvd1
+}
+
+function vbox_dettach_dvd1(){
+	# while VM off
+	echo "WARN! VM should be non-active state"
+	vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 1 --device 0 --type dvddrive --medium emptydrive 
+
+	#vboxmanage storageattach $_vm_name --storagectl "SATA01" --port 1 --device 0 --type dvddrive --medium none
+}
+
+
 function remove_vboxvm(){
+	vboxmanage unregistervm $_vm_name --delete
+}
+
+function remove_usb_vboxvm(){
+	_vm_name="USB-OS"
 	vboxmanage unregistervm $_vm_name --delete
 }
 
@@ -367,9 +480,17 @@ function remounting(){
     	rm build/log/linux-run
 	fi
 	if  ! mount | grep -q "on /media/$USER/root " ; then
-		cmake --build build --target make_loops_mounted --verbose && \
-		cmake --build build --target mounting_linux
+		cmake --build build --target make_loops_mounted $_verbose && \
+		cmake --build build --target mounting_linux $_verbose
 	fi
+}
+
+function set_repo_active(){
+	sudo cp -f base-os/debian.list /media/$USER/root/etc/apt/sources.list.d/
+}
+
+function set_repo_deactive(){
+	sudo rm -rf /media/$USER/root/etc/apt/sources.list.d/debian.list
 }
 
 function mount_dvd(){
@@ -379,6 +500,21 @@ function mount_dvd(){
 	mount_dvd4 && \
 	mount_dvd5 && \
 	mount_dvd6 && \
+	mount_dvd7 && \
+	mount_dvd8 && \
+	mount_dvd9 && \
+	mount_dvd10 && \
+	mount_dvd11 && \
+	mount_dvd12 && \
+	mount_dvd13 && \
+	mount_dvd14 && \
+	mount_dvd15 && \
+	mount_dvd16 && \
+	mount_dvd17 && \
+	mount_dvd18 && \
+	mount_dvd19 && \
+	mount_dvd20 && \
+	mount_dvd21 && \
 	sudo cp -f base-os/DVD.list /media/$USER/root/etc/apt/sources.list.d/
 }
 
@@ -389,6 +525,21 @@ function unmount_dvd(){
 	unmount_dvd4 && \
 	unmount_dvd5 && \
 	unmount_dvd6 && \
+	unmount_dvd7 && \
+	unmount_dvd8 && \
+	unmount_dvd9 && \
+	unmount_dvd10 && \
+	unmount_dvd11 && \
+	unmount_dvd12 && \
+	unmount_dvd13 && \
+	unmount_dvd14 && \
+	unmount_dvd15 && \
+	unmount_dvd16 && \
+	unmount_dvd17 && \
+	unmount_dvd18 && \
+	unmount_dvd19 && \
+	unmount_dvd20 && \
+	unmount_dvd21 && \
 	sudo rm -rf /media/$USER/root/etc/apt/sources.list.d/DVD.list
 }
 
@@ -437,6 +588,126 @@ function mount_dvd6(){
     	sudo mkdir -p /mnt/DVD6 && sudo mkdir -p /media/$USER/root/mnt/DVD6 
 		sudo mount -t iso9660 -o loop $_iso_home/$_dvd6 /mnt/DVD6 && \
 		sudo mount --bind /mnt/DVD6 /media/$USER/root/mnt/DVD6
+	fi
+}
+
+function mount_dvd7(){
+	if  ! mount | grep -q "DVD7"  ; then
+    	sudo mkdir -p /mnt/DVD7 && sudo mkdir -p /media/$USER/root/mnt/DVD7 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd7 /mnt/DVD7 && \
+		sudo mount --bind /mnt/DVD7 /media/$USER/root/mnt/DVD7
+	fi
+}
+
+function mount_dvd8(){
+	if  ! mount | grep -q "DVD8"  ; then
+    	sudo mkdir -p /mnt/DVD8 && sudo mkdir -p /media/$USER/root/mnt/DVD8 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd8 /mnt/DVD8 && \
+		sudo mount --bind /mnt/DVD8 /media/$USER/root/mnt/DVD8
+	fi
+}
+
+function mount_dvd9(){
+	if  ! mount | grep -q "DVD9"  ; then
+    	sudo mkdir -p /mnt/DVD9 && sudo mkdir -p /media/$USER/root/mnt/DVD9 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd9 /mnt/DVD9 && \
+		sudo mount --bind /mnt/DVD9 /media/$USER/root/mnt/DVD9
+	fi
+}
+
+function mount_dvd10(){
+	if  ! mount | grep -q "DVD10"  ; then
+    	sudo mkdir -p /mnt/DVD10 && sudo mkdir -p /media/$USER/root/mnt/DVD10 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd10 /mnt/DVD10 && \
+		sudo mount --bind /mnt/DVD10 /media/$USER/root/mnt/DVD10
+	fi
+}
+
+function mount_dvd11(){
+	if  ! mount | grep -q "DVD11"  ; then
+    	sudo mkdir -p /mnt/DVD11 && sudo mkdir -p /media/$USER/root/mnt/DVD11 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd11 /mnt/DVD11 && \
+		sudo mount --bind /mnt/DVD11 /media/$USER/root/mnt/DVD11
+	fi
+}
+
+function mount_dvd12(){
+	if  ! mount | grep -q "DVD12"  ; then
+    	sudo mkdir -p /mnt/DVD12 && sudo mkdir -p /media/$USER/root/mnt/DVD12 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd12 /mnt/DVD12 && \
+		sudo mount --bind /mnt/DVD12 /media/$USER/root/mnt/DVD12
+	fi
+}
+
+function mount_dvd13(){
+	if  ! mount | grep -q "DVD13"  ; then
+    	sudo mkdir -p /mnt/DVD13 && sudo mkdir -p /media/$USER/root/mnt/DVD13 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd13 /mnt/DVD13 && \
+		sudo mount --bind /mnt/DVD13 /media/$USER/root/mnt/DVD13
+	fi
+}
+
+function mount_dvd14(){
+	if  ! mount | grep -q "DVD14"  ; then
+    	sudo mkdir -p /mnt/DVD14 && sudo mkdir -p /media/$USER/root/mnt/DVD14 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd14 /mnt/DVD14 && \
+		sudo mount --bind /mnt/DVD14 /media/$USER/root/mnt/DVD14
+	fi
+}
+
+function mount_dvd15(){
+	if  ! mount | grep -q "DVD15"  ; then
+    	sudo mkdir -p /mnt/DVD15 && sudo mkdir -p /media/$USER/root/mnt/DVD15 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd15 /mnt/DVD15 && \
+		sudo mount --bind /mnt/DVD15 /media/$USER/root/mnt/DVD15
+	fi
+}
+
+function mount_dvd16(){
+	if  ! mount | grep -q "DVD16"  ; then
+    	sudo mkdir -p /mnt/DVD16 && sudo mkdir -p /media/$USER/root/mnt/DVD16 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd16 /mnt/DVD16 && \
+		sudo mount --bind /mnt/DVD16 /media/$USER/root/mnt/DVD16
+	fi
+}
+
+function mount_dvd17(){
+	if  ! mount | grep -q "DVD17"  ; then
+    	sudo mkdir -p /mnt/DVD17 && sudo mkdir -p /media/$USER/root/mnt/DVD17 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd17 /mnt/DVD17 && \
+		sudo mount --bind /mnt/DVD17 /media/$USER/root/mnt/DVD17
+	fi
+}
+
+function mount_dvd18(){
+	if  ! mount | grep -q "DVD18"  ; then
+    	sudo mkdir -p /mnt/DVD18 && sudo mkdir -p /media/$USER/root/mnt/DVD18 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd18 /mnt/DVD18 && \
+		sudo mount --bind /mnt/DVD18 /media/$USER/root/mnt/DVD18
+	fi
+}
+
+function mount_dvd19(){
+	if  ! mount | grep -q "DVD19"  ; then
+    	sudo mkdir -p /mnt/DVD19 && sudo mkdir -p /media/$USER/root/mnt/DVD19 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd19 /mnt/DVD19 && \
+		sudo mount --bind /mnt/DVD19 /media/$USER/root/mnt/DVD19
+	fi
+}
+
+function mount_dvd20(){
+	if  ! mount | grep -q "DVD20"  ; then
+    	sudo mkdir -p /mnt/DVD20 && sudo mkdir -p /media/$USER/root/mnt/DVD20 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd20 /mnt/DVD20 && \
+		sudo mount --bind /mnt/DVD20 /media/$USER/root/mnt/DVD20
+	fi
+}
+
+function mount_dvd21(){
+	if  ! mount | grep -q "DVD21"  ; then
+    	sudo mkdir -p /mnt/DVD21 && sudo mkdir -p /media/$USER/root/mnt/DVD21 
+		sudo mount -t iso9660 -o loop $_iso_home/$_dvd21 /mnt/DVD21 && \
+		sudo mount --bind /mnt/DVD21 /media/$USER/root/mnt/DVD21
 	fi
 }
 
@@ -519,6 +790,200 @@ function unmount_dvd6(){
     fi
 }
 
+function unmount_dvd7(){
+    sudo umount /media/$USER/root/mnt/DVD7 && sudo umount /mnt/DVD7
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD7."
+	else
+    	echo "Done unmounting DVD7." 
+	fi
+	if [ -d "/mnt/DVD7" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD7
+       sudo rm -rf /mnt/DVD7
+    fi
+}
+
+function unmount_dvd8(){
+    sudo umount /media/$USER/root/mnt/DVD8 && sudo umount /mnt/DVD8
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD8."
+	else
+    	echo "Done unmounting DVD8." 
+	fi
+	if [ -d "/mnt/DVD8" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD8
+       sudo rm -rf /mnt/DVD8
+    fi
+}
+
+function unmount_dvd9(){
+    sudo umount /media/$USER/root/mnt/DVD9 && sudo umount /mnt/DVD9
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD9."
+	else
+    	echo "Done unmounting DVD9." 
+	fi
+	if [ -d "/mnt/DVD9" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD9
+       sudo rm -rf /mnt/DVD9
+    fi
+}
+
+function unmount_dvd10(){
+    sudo umount /media/$USER/root/mnt/DVD10 && sudo umount /mnt/DVD10
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD10."
+	else
+    	echo "Done unmounting DVD10." 
+	fi
+	if [ -d "/mnt/DVD10" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD10
+       sudo rm -rf /mnt/DVD10
+    fi
+}
+
+function unmount_dvd11(){
+    sudo umount /media/$USER/root/mnt/DVD11 && sudo umount /mnt/DVD11
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD11."
+	else
+    	echo "Done unmounting DVD11." 
+	fi
+	if [ -d "/mnt/DVD11" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD11
+       sudo rm -rf /mnt/DVD11
+    fi
+}
+
+function unmount_dvd12(){
+    sudo umount /media/$USER/root/mnt/DVD12 && sudo umount /mnt/DVD12
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD12."
+	else
+    	echo "Done unmounting DVD12." 
+	fi
+	if [ -d "/mnt/DVD12" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD12
+       sudo rm -rf /mnt/DVD12
+    fi
+}
+
+function unmount_dvd13(){
+    sudo umount /media/$USER/root/mnt/DVD13 && sudo umount /mnt/DVD13
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD13."
+	else
+    	echo "Done unmounting DVD13." 
+	fi
+	if [ -d "/mnt/DVD13" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD13
+       sudo rm -rf /mnt/DVD13
+    fi
+}
+
+function unmount_dvd14(){
+    sudo umount /media/$USER/root/mnt/DVD14 && sudo umount /mnt/DVD14
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD14."
+	else
+    	echo "Done unmounting DVD14." 
+	fi
+	if [ -d "/mnt/DVD14" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD14
+       sudo rm -rf /mnt/DVD14
+    fi
+}
+
+function unmount_dvd15(){
+    sudo umount /media/$USER/root/mnt/DVD15 && sudo umount /mnt/DVD15
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD15."
+	else
+    	echo "Done unmounting DVD15." 
+	fi
+	if [ -d "/mnt/DVD15" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD15
+       sudo rm -rf /mnt/DVD15
+    fi
+}
+
+function unmount_dvd16(){
+    sudo umount /media/$USER/root/mnt/DVD16 && sudo umount /mnt/DVD16
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD16."
+	else
+    	echo "Done unmounting DVD16." 
+	fi
+	if [ -d "/mnt/DVD16" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD16
+       sudo rm -rf /mnt/DVD16
+    fi
+}
+
+function unmount_dvd17(){
+    sudo umount /media/$USER/root/mnt/DVD17 && sudo umount /mnt/DVD17
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD17."
+	else
+    	echo "Done unmounting DVD17." 
+	fi
+	if [ -d "/mnt/DVD17" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD17
+       sudo rm -rf /mnt/DVD17
+    fi
+}
+
+function unmount_dvd18(){
+    sudo umount /media/$USER/root/mnt/DVD18 && sudo umount /mnt/DVD18
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD18."
+	else
+    	echo "Done unmounting DVD18." 
+	fi
+	if [ -d "/mnt/DVD18" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD18
+       sudo rm -rf /mnt/DVD18
+    fi
+}
+
+function unmount_dvd19(){
+    sudo umount /media/$USER/root/mnt/DVD19 && sudo umount /mnt/DVD19
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD19."
+	else
+    	echo "Done unmounting DVD19." 
+	fi
+	if [ -d "/mnt/DVD19" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD19
+       sudo rm -rf /mnt/DVD19
+    fi
+}
+
+function unmount_dvd20(){
+    sudo umount /media/$USER/root/mnt/DVD20 && sudo umount /mnt/DVD20
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD20."
+	else
+    	echo "Done unmounting DVD20." 
+	fi
+	if [ -d "/mnt/DVD20" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD20
+       sudo rm -rf /mnt/DVD20
+    fi
+}
+
+function unmount_dvd21(){
+    sudo umount /media/$USER/root/mnt/DVD21 && sudo umount /mnt/DVD21
+    if [[ $? -ne 0 ]]; then
+    	echo "Error unmounting DVD21."
+	else
+    	echo "Done unmounting DVD21." 
+	fi
+	if [ -d "/mnt/DVD21" ]; then
+       sudo rm -rf /media/$USER/root/mnt/DVD21
+       sudo rm -rf /mnt/DVD21
+    fi
+}
 
 function set_base_os(){
     unpack_debian12 && \
@@ -733,58 +1198,79 @@ function parse_params() {
 				setup_cmake
                 ;;
             -br | --build-raw)
-					build_raw_disk
+				build_raw_disk
 				;;
 	   	    -d9|--download-debian9)
-					download_debian9
+				download_debian9
 				;;
 		    -ud9|--unpack-debian9)
-					unpack_debian9
+				unpack_debian9
 				;;
 	        -db9|--build-debian9)
-					build_debian9
+				build_debian9
 				;;
 			-ulx|--unmount-linux)
-					unmount_linux
+				unmount_linux
 				;;
 			-unl|--unloop)
-					unloop
+				unloop
 				;;
 			-rem|--remounting)
-					remounting
+				remounting
+				;;
+			--set-repo-active)
+				set_repo_active
+				;;
+			--set-repo-deactive)
+				set_repo_deactive
 				;;
 			--mount-dvd)
-					mount_dvd
+				mount_dvd
 				;;
 			--unmount-dvd)
-					unmount_dvd
+				unmount_dvd
 				;;
             --set-base-os)
-					set_base_os
+				set_base_os
 				;;
             --set-kernel)
-					set_kernel
+				set_kernel
 				;;
             --set-uefi-boot)
-					set_uefi_boot
+				set_uefi_boot
 				;;
 			--start-qemu-uefi)
-					start_qemu_uefi
+				start_qemu_uefi
 				;;
 			--create-vboxvm)
-					create_vboxvm
+				create_vboxvm
+				;;
+			--create-usb-vboxvm)
+				create_usb_vboxvm
 				;;
 			--create-vmdk)
-					create_vmdk
+				create_vmdk
+				;;
+			--create-usb-vmdk)
+				create_usb_vmdk $args
 				;;
 			--remove-vboxvm)
-					remove_vboxvm
+				remove_vboxvm
+				;;
+			--remove-usb-vboxvm)
+				remove_usb_vboxvm
+				;;
+			--vbox-attach-dvd1)
+				vbox_attach_dvd1
+				;;
+			--vbox-dettach-dvd1)
+				vbox_dettach_dvd1
 				;;
             --build-by-config)
-					build_empty_disk
+				build_empty_disk
 				;;
             --build-partition)
-					build_partition
+				build_partition
 				;;
             --demolish-disk)
                 if [[ $args -eq 0 ]]; then

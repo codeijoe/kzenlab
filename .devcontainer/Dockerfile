@@ -4,6 +4,7 @@ FROM debian:bookworm
 RUN apt update && apt install -yqq \
     systemd \
     udev \
+    sudo \
     cmake \
     curl \
     wget \
@@ -12,12 +13,12 @@ RUN apt update && apt install -yqq \
     udisks2
 
 # Create a non-root user
-#RUN useradd -m -s /bin/bash vscode && \
-#    echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/vscode && \
- #   chmod 0440 /etc/sudoers.d/vscode
+RUN useradd -m -s /bin/bash vscode && \
+    echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/vscode && \
+    chmod 0440 /etc/sudoers.d/vscode
 
 # Switch to the non-root user
-#USER vscode
+USER vscode
 
 # Set the working directory
 WORKDIR /workspace

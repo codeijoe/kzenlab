@@ -1,10 +1,12 @@
 FROM debian:bookworm
 
 # Update the package list and install systemd and udev
-RUN apt update && apt install -y \
-systemd \
-udev \
-cmake \
+RUN apt update && apt install -yqq \
+    systemd \
+    udev \
+    cmake \
+    curl \
+    wget
 
 # Create a non-root user
 RUN useradd -m -s /bin/bash vscode && \

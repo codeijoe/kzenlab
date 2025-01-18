@@ -4,12 +4,8 @@ echo "Running postCreateCommand.sh as user: $(whoami)"
 
 # Install additional tools (requires sudo for non-root)
 sudo apt update && sudo apt install -yqq \
-    wget \
-    curl \
     vim \
     htop \
-    udev \
-    cmake \
     udisks2 \
     debootstrap \
     qemu-system \

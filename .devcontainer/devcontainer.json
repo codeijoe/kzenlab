@@ -7,10 +7,6 @@
 		"dockerfile": "Dockerfile"
 	},
 	"features": {
-		"ghcr.io/wxw-matt/devcontainer-features/command_runner:0": {},
-		"ghcr.io/devcontainers-community/features/llvm:3": {},
-		"ghcr.io/devcontainers-extra/features/apt-get-packages:1": {},
-		"ghcr.io/devcontainers-extra/features/apt-packages:1": {},
 		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
 	"customizations": {

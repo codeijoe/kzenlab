@@ -10,6 +10,7 @@ RUN apt update && apt install -yqq \
     wget \
     vim \
     htop \
+    build-essential \
     udisks2
 
 # Create a non-root user

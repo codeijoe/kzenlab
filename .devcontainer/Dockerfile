@@ -6,7 +6,7 @@ RUN apt update && apt install -yqq \
     udev \
     cmake \
     curl \
-    wget
+    wget \
     vim \
     htop \
     udisks2

@@ -1,4 +1,6 @@
-#!/usr/bin/env bash
+#!/bin/bash
+#set -e
+#export DEBIAN_FRONTEND=noninteractive
 
 echo "Running postCreateCommand.sh as user: $(whoami)"
 

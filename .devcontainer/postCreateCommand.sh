@@ -6,7 +6,7 @@ echo "deb [arch=amd64 signed-by=/usr/share/keyrings/oracle_vbox_2016.gpg] http:/
 
 sudo apt update
 sudo apt install -yqq cmake
-sudo apt install -yqq udisksctl
+sudo apt install -yqq udisks2
 sudo apt install -yqq debootstrap
 sudo apt install -yqq virtualbox-7.1
 sudo apt install -yqq qemu-system

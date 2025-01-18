@@ -1,0 +1,43 @@
+## ENVIRONMENT
+DEBIAN_MIRROR=http://mirror.djvg.sg/debian/
+DEBIAN_SECURITY=http://security.debian.org/debian-security
+
+##### Hypervisor
+QEMU_HOME=/tmp/QEMU_VM 
+VBOX_HOME=/tmp/VBOX_VM 
+VBOX_VM_HOME=/tmp/VBOX_VM/VM
+VBOX_DISK_HOME=/tmp/VBOX_VM/DISK
+ISO_HOME=/tmp/ISO
+DVD_01=debian-12.8.0-amd64-DVD-1.iso
+DVD_02=debian-12.8.0-amd64-DVD-2.iso
+DVD_03=debian-12.8.0-amd64-DVD-3.iso
+DVD_04=debian-12.8.0-amd64-DVD-4.iso
+DVD_05=debian-12.8.0-amd64-DVD-5.iso
+DVD_06=debian-12.8.0-amd64-DVD-6.iso
+DVD_07=debian-12.8.0-amd64-DVD-7.iso
+DVD_08=debian-12.8.0-amd64-DVD-8.iso
+DVD_09=debian-12.8.0-amd64-DVD-9.iso
+DVD_10=debian-12.8.0-amd64-DVD-10.iso
+DVD_11=debian-12.8.0-amd64-DVD-11.iso
+DVD_12=debian-12.8.0-amd64-DVD-12.iso
+DVD_13=debian-12.8.0-amd64-DVD-13.iso
+DVD_14=debian-12.8.0-amd64-DVD-14.iso
+DVD_15=debian-12.8.0-amd64-DVD-15.iso
+DVD_16=debian-12.8.0-amd64-DVD-16.iso
+DVD_17=debian-12.8.0-amd64-DVD-17.iso
+DVD_18=debian-12.8.0-amd64-DVD-18.iso
+DVD_19=debian-12.8.0-amd64-DVD-19.iso
+DVD_20=debian-12.8.0-amd64-DVD-20.iso
+DVD_21=debian-12.8.0-amd64-DVD-21.iso
+
+#### Virtual Machine
+VM_HYPER_TYPE=VBOX
+VM_NAME=KZENLAB_BASE_OS_4GB
+VM_DOMAIN=codeijoe.org
+VM_HOSTNAME=kzenlab
+VM_DISK_SIZE=4GiB
+
+#### Disk partition position (NOT SIZE)
+DISK_EFI=512MiB 
+DISK_SWAP=1024MiB
+DISK_ROOT=4000MiB

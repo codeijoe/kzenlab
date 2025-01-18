@@ -96,6 +96,9 @@ add_subdirectory(raw-disk)
 #### Base OS Stage
 add_subdirectory(base-os)
 
+#### X11 Base Stage
+add_subdirectory(x11-system)
+
 ########## TARGET ############
 
 ######################################

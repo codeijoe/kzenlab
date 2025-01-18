@@ -1203,6 +1203,9 @@ function parse_params() {
 	   	    -d9|--download-debian9)
 				download_debian9
 				;;
+	   	    -d12|--download-debian12)
+				download_debian12
+				;;
 		    -ud9|--unpack-debian9)
 				unpack_debian9
 				;;

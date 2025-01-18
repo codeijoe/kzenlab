@@ -57,18 +57,18 @@ set(ISO_DEBIAN128_CD "debian-12.8.0-amd64-netinst.iso" CACHE STRING "Debian Neti
 set(ISO_DEBIAN128_DVD_1 "debian-12.8.0-amd64-DVD-1.iso" CACHE STRING "Debian DVD 1 ISO File")
 
 #### QEMU
-set(QEMU_HOME "/home/ijoe/QEMU_VM" CACHE STRING "QEMU VM Home Directory")
-set(QEMU_VM_HOME "${QEMU_VM}/VM" CACHE STRING "QEMU VM Home Directory")
+set(QEMU_HOME "/tmp/QEMU_VM" CACHE STRING "QEMU home directory")
+set(QEMU_VM_HOME "${QEMU_VM}/VM" CACHE STRING "QEMU VM home directory")
 
 #### QEMU DISK
-set(QEMU_DISK_HOME "${QEMU_HOME}/DISK" CACHE STRING "QEMU VM Home Directory")
+set(QEMU_DISK_HOME "${QEMU_HOME}/DISK" CACHE STRING "QEMU Disk home directory")
 
 #### VBOX
-set(VBOX_HOME "/media/89fbfc92-6afb-4c5a-a889-199bc5f66e21/ijoe/VBOX_VM" CACHE STRING "VBOX Home Directory")
-set(VBOX_VM_HOME "/media/89fbfc92-6afb-4c5a-a889-199bc5f66e21/ijoe/VBOX_VM/VM" CACHE STRING "VBOX VM Home Directory")
+set(VBOX_HOME "/tmp/VBOX_VM" CACHE STRING "VBOX home Directory")
+set(VBOX_VM_HOME "${VBOX_HOME}/VM" CACHE STRING "VBOX VM home Directory")
 
 #### VBOX DISK
-set(VBOX_DISK_HOME "${VBOX_HOME}/DISK" CACHE STRING "VM Disk Home Directory")
+set(VBOX_DISK_HOME "${VBOX_HOME}/DISK" CACHE STRING "VM disk home directory")
 set(VM_RAWDISK_4GB "${VBOX_HOME}/flat4GB.vmdk" CACHE STRING "Raw Disk 4GB")
 set(VM_RAWDISK_8GB "${VBOX_HOME}/flat8GB.vmdk" CACHE STRING "Raw Disk 8GB")
 set(VM_RAWDISK_16GB "${VBOX_HOME}/flat16GB.vmdk" CACHE STRING "Raw Disk 16GB")
@@ -95,9 +95,6 @@ add_subdirectory(raw-disk)
 
 #### Base OS Stage
 add_subdirectory(base-os)
-
-#### X11 Base Stage
-add_subdirectory(x11-system)
 
 ########## TARGET ############
 

@@ -1,0 +1,28 @@
+{
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"runArgs": [
+		"--shm-size=1g"
+	],
+	"features": {
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers-community/features/llvm:3": {},
+		"ghcr.io/devcontainers/features/common-utils:2": {}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cmake-tools",
+				"ms-azuretools.vscode-docker",
+				"vscodevim.vim",
+				"mads-hartmann.bash-ide-vscode",
+				"rogalmic.bash-debug"
+			]
+		}
+	},
+
+	"postCreateCommand": "bash .devcontainer/postCreateCommand.sh",
+
+	"remoteUser": "vscode"
+}

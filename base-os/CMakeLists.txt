@@ -116,17 +116,17 @@ add_custom_target(
 
     COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_uefi \'${DEV_LOOPS}\' '"
 
-    DEPENDS ${SET_EFI_MOUNT}
     DEPENDS ${SET_GRUB}
+    DEPENDS ${SET_EFI_MOUNT}
     DEPENDS ${LOG_LOOPS} 
     COMMENT "Create UEFI Secure Boot..."
     VERBATIM
 )
 
-
 add_custom_target(
     set_kernel
-    DEPENDS SET_KERNEL
+    DEPENDS ${SET_KERNEL}
+    DEPENDS ${SET_GRUB}
     DEPENDS ${SET_APT}
     COMMENT "Setting kernel to debian base"
     VERBATIM
@@ -185,13 +185,13 @@ add_custom_target(
 ############### COMMAND ###############
 
 add_custom_command(
-	OUTPUT SET_KERNEL
+	OUTPUT ${SET_KERNEL}
 
-    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_kernel'" &> SET_KERNEL
+    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_kernel'" &> ${SET_KERNEL}
 
-    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_os_default \'${VM_HOSTNAME}\' '" &> SET_KERNEL
+    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_os_default \'${VM_HOSTNAME}\' '" &> ${SET_KERNEL}
 
-    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_motd'" &> SET_KERNEL
+    COMMAND bash -c "${CHROOT_CMD} ${CHROOT_DIR} bash -c '. /root/base-os.sh; set_motd'" &> ${SET_KERNEL}
 
 	DEPENDS ${SET_APT}
     DEPENDS ${LOG_ROOT}
@@ -205,10 +205,6 @@ add_custom_command(
 	OUTPUT ${SET_APT}
 
     COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/sources.list ${CHROOT_DIR}/etc/apt/sources.list &> ${SET_APT}"
-
-    COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/DVD.list ${CHROOT_DIR}/etc/apt/sources.list.d/ &> ${SET_APT}"
-
-    COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/debootstrap.list ${CHROOT_DIR}/etc/apt/sources.list.d/ &> ${SET_APT}"
 
     COMMAND bash -c "sudo cp -f ${CMAKE_SOURCE_DIR}/base-os/base-os.sh ${CHROOT_DIR}/root && sudo chmod +x ${CHROOT_DIR}/root/base-os.sh" &> ${SET_APT}
 

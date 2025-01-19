@@ -1,13 +1,14 @@
 ## ENVIRONMENT
 DEBIAN_MIRROR=http://mirror.djvg.sg/debian/
 DEBIAN_SECURITY=http://security.debian.org/debian-security
+DEBIAN_ISO=https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/debian-12.9.0-amd64-DVD-1.iso
 
 ##### Hypervisor
-QEMU_HOME=/media/89fbfc92-6afb-4c5a-a889-199bc5f66e21/ijoe/QEMU_VM 
-VBOX_HOME=/media/89fbfc92-6afb-4c5a-a889-199bc5f66e21/ijoe/VBOX_VM 
-VBOX_VM_HOME=/media/89fbfc92-6afb-4c5a-a889-199bc5f66e21/ijoe/VBOX_VM/VM
-VBOX_DISK_HOME=/media/89fbfc92-6afb-4c5a-a889-199bc5f66e21/ijoe/VBOX_VM/DISK
-ISO_HOME=/media/89fbfc92-6afb-4c5a-a889-199bc5f66e21/ijoe/ISO/LINUX/DEBIAN
+QEMU_HOME=/tmp/QEMU_VM 
+VBOX_HOME=/tmp/VBOX_VM 
+VBOX_VM_HOME=/tmp/VBOX_VM/VM
+VBOX_DISK_HOME=/tmp/VBOX_VM/DISK
+ISO_HOME=/tmp/ISO
 DVD_01=debian-12.8.0-amd64-DVD-1.iso
 DVD_02=debian-12.8.0-amd64-DVD-2.iso
 DVD_03=debian-12.8.0-amd64-DVD-3.iso
